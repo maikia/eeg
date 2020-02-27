@@ -4,7 +4,6 @@ import numpy as np
 
 from surfer import Brain
 import mne
-from mne.datasets import sample
 
 
 # IMPORTANT: run it with ipython --gui=qt
@@ -13,16 +12,16 @@ parcellation = 'aparc_sub'
 
 # This will download the data if it not already on your machine. We also set
 # the subjects directory so we don't need to give it to functions.
-data_path = mne.datasets.sample.data_path() #sample.data_path()
+data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
-#subjects_dir = mne.datasets.sample.data_path() + '/subjects'
 subject = 'fsaverage'
 
 mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
                                           verbose=True)
 
 # First, we get an info structure from the test subject.
-evoked_fname = op.join(data_path, 'MEG', 'sample', 'sample'+'_audvis-ave.fif') # double check if correct path
+evoked_fname = op.join(data_path, 'MEG', 'sample', 'sample'+'_audvis-ave.fif')
+# double check if correct path
 info = mne.io.read_info(evoked_fname)
 sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
 info = mne.pick_info(info, sel)
@@ -40,8 +39,9 @@ src = fwd['src']
 # randomly select a label of interest
 
 selected_label = mne.read_labels_from_annot(
-    subject, parc='aparc_sub',subjects_dir=subjects_dir) #, regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
-# this need to be changed to use aparc_sub or other parcellation
+    subject, parc='aparc_sub', subjects_dir=subjects_dir)
+# regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
+
 label = selected_label[0]
 # Define the time course of the activity for each source of the region to
 # activate. Here we use a sine wave at 18 Hz with a peak amplitude
@@ -67,32 +67,16 @@ source_simulator.add_data(label, source_time_series, events)
 raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
 cov = mne.make_ad_hoc_cov(raw.info)
 mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.04])
-#raw.plot()
+raw.plot()
 
 # Plot evoked data to get another view of the simulated raw data.
 events = mne.find_events(raw)
 epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
-#evoked.plot()
+evoked.plot()
 
-
-# view where the signal originated from
-#brain = stc_mean.plot(hemi='lh', subjects_dir=subjects_dir)
-#brain = Brain(subject_id=subject, hemi='lh', surf='inflated',
-#              subjects_dir=subjects_dir,
-#              cortex='low_contrast', background='white', size=(800, 600))
-#brain.show_view('lateral')
-#brain.add_label(parcellation, borders=True, color='k')
-#brain.add_label(selected_label, borders=True, color='k')
-#brain.add_label(label, borders=True, color='b')
-#brain = Brain('fsaverage', 'lh', 'inflated', subjects_dir=subjects_dir,
-#              cortex='low_contrast', background='white', size=(800, 600))
-#brain.add_label('aparc')
-#brain.add_annotation('aparc_sub')
-
-#subjects_dir = mne.datasets.sample.data_path() + '/subjects'
+# plot where the signal originates from
 brain = Brain(subject, 'lh', 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
 brain.add_annotation('aparc_sub', color='k')
 brain.add_label(label, borders=False, color='b')
-
