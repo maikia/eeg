@@ -2,14 +2,14 @@ import os.path as op
 
 import numpy as np
 
+from surfer import Brain
 import mne
 from mne.datasets import sample
 
 print(__doc__)
 
+# IMPORTANT: run it with ipython --gui=qt
 
-
-# For this example, we will be using the information of the sample subject.
 # This will download the data if it not already on your machine. We also set
 # the subjects directory so we don't need to give it to functions.
 data_path = sample.data_path()
@@ -32,14 +32,12 @@ src = fwd['src']
 
 # To select a region to activate, we use the caudal middle frontal to grow
 # a region of interest.
-selected_label = mne.read_labels_from_annot(
-    subject, regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)[0]
-location = 'center'  # Use the center of the region as a seed.
-extent = 10.  # Extent in mm of the region.
-label = mne.label.select_sources(
-    subject, selected_label, location=location, extent=extent,
-    subjects_dir=subjects_dir)
+# randomly select a label of interest
 
+selected_label = mne.read_labels_from_annot(
+    subject, parc='aparc',subjects_dir=subjects_dir) #, regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
+# this need to be changed to use aparc_sub or other parcellation
+label = selected_label[0]
 # Define the time course of the activity for each source of the region to
 # activate. Here we use a sine wave at 18 Hz with a peak amplitude
 # of 10 nAm.
@@ -59,18 +57,30 @@ events[:, 2] = 1  # All events have the sample id.
 source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
 source_simulator.add_data(label, source_time_series, events)
 
-import pdb; pdb.set_trace()
-
 # Project the source time series to sensor space and add some noise. The source
 # simulator can be given directly to the simulate_raw function.
 raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
 cov = mne.make_ad_hoc_cov(raw.info)
 mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.04])
-raw.plot()
+#raw.plot()
 
 # Plot evoked data to get another view of the simulated raw data.
 events = mne.find_events(raw)
 epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
-evoked.plot()
+#evoked.plot()
+
+
+# view where the signal originated from
+#brain = stc_mean.plot(hemi='lh', subjects_dir=subjects_dir)
+brain = Brain('fsaverage', 'lh', 'inflated', subjects_dir=subjects_dir,
+              cortex='low_contrast', background='white', size=(800, 600))
+brain.show_view('lateral')
+brain.add_label('aparc', borders=True, color='k')
+#brain.add_label(selected_label, borders=True, color='k')
+brain.add_label(label, borders=True, color='b')
+#brain = Brain('fsaverage', 'lh', 'inflated', subjects_dir=subjects_dir,
+#              cortex='low_contrast', background='white', size=(800, 600))
+#brain.add_label('aparc')
+
 
