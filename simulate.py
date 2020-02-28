@@ -21,7 +21,6 @@ mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
 
 # First, we get an info structure from the test subject.
 evoked_fname = op.join(data_path, 'MEG', 'sample', 'sample'+'_audvis-ave.fif')
-# double check if correct path
 info = mne.io.read_info(evoked_fname)
 sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
 info = mne.pick_info(info, sel)
@@ -34,9 +33,6 @@ fwd_fname = op.join(data_path, 'MEG', 'sample',
 fwd = mne.read_forward_solution(fwd_fname)
 src = fwd['src']
 
-# To select a region to activate, we use the caudal middle frontal to grow
-# a region of interest.
-# randomly select a label of interest
 
 selected_label = mne.read_labels_from_annot(
     subject, parc='aparc_sub', subjects_dir=subjects_dir)
@@ -75,8 +71,16 @@ epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
 evoked.plot()
 
-# plot where the signal originates from
-brain = Brain(subject, 'lh', 'inflated', subjects_dir=subjects_dir,
-              cortex='low_contrast', background='white', size=(800, 600))
-brain.add_annotation('aparc_sub', color='k')
-brain.add_label(label, borders=False, color='b')
+def visualize_loc(subjects_dir, label, file_save_brain):
+    # png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
+    # plot where the signal originates from
+    brain = Brain(subject, 'lh', 'inflated', subjects_dir=subjects_dir,
+                cortex='low_contrast', background='white', size=(800, 600))
+    brain.add_annotation('aparc_sub', color='k')
+    # draws where is the source
+    brain.add_label(label, borders=False, color='b')
+    brain.save_image(file_save_brain)
+
+visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
+
+
