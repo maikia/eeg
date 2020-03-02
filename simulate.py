@@ -134,20 +134,16 @@ evoked.plot()
 
 # png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
 # plot where the signal originates from
-brain = Brain('sample', 'both', 'inflated', subjects_dir=subjects_dir,
-            cortex='low_contrast', background='white', size=(800, 600))
+#brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
+#            cortex='low_contrast', background='white', size=(800, 600))
 #brain.add_annotation('aparc_sub', color='k')
 # draws where is the source
-brain.add_label(label, borders=False, color='b')
+#brain.add_label(label, borders=False, color='b')
 
 #brain.add_label(full_annot, borders=True, color='k')
 #brain.add_label(lh_labels, borders=False, color='b')
 #brain.add_label(rh_labels, borders=False, color='b')
-file_save_brain='fig/brain.png'
 
-for label in selected_label:
-    brain.add_label(label, borders= True, color='k')
-brain.save_image(file_save_brain)
 
 #visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
 
@@ -157,5 +153,13 @@ from mne import random_parcellation
 parcel = random_parcellation('sample', 80, 'lh', subjects_dir=subjects_dir,
                         surface='white', random_state=0)
 
-mne.write_labels_to_annot(parcel,subjects_dir=subjects_dir, subject='sample')
-                            annot_fname='random40', hemi='lh')
+import os
+random_annot_path = os.path.join(subjects_dir, subject, 'label', 'lh.random80.annot')
+mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir, subject='sample', annot_fname=random_annot_path, overwrite = True)
+
+file_save_brain='fig/brain.png'
+
+#for label in selected_label:
+#    brain.add_label(label, borders= True, color='k')
+brain.add_annotation('random80', color='k')
+brain.save_image(file_save_brain)
