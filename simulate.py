@@ -4,23 +4,36 @@ import numpy as np
 
 from surfer import Brain
 import mne
+from mne import random_parcellation
 
 
 # IMPORTANT: run it with ipython --gui=qt
 
-parcellation = 'aparc_sub'
-
-
+# same variables
+n = 100
+random_state = 0
+hemi = 'lh'
+subject = 'sample'
 
 # This will download the data if it not already on your machine. We also set
 # the subjects directory so we don't need to give it to functions.
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
-subject = 'sample' #'fsaverage'
+
+# we will randomly create a parcellation of n parcels in left hemisphere
+parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
+                        surface='white', random_state=random_state)
+
+random_annot_name = hemi + '.random' + str(n) + '.annot'
+random_annot_path = op.join(subjects_dir, subject, 'label', random_annot_name)
+
+mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir, subject=subject,
+                          annot_fname=random_annot_path,
+                          overwrite=True)
 
 
-mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
-                                          verbose=True)
+#mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
+#                                          verbose=True)
 
 # First, we get an info structure from the test subject.
 evoked_fname = op.join(data_path, 'MEG', 'sample', subject+'_audvis-ave.fif')
@@ -36,67 +49,14 @@ fwd_fname = op.join(data_path, 'MEG', 'sample',
 fwd = mne.read_forward_solution(fwd_fname)
 src = fwd['src']
 
+selected_label = mne.read_labels_from_annot(subject=subject,
+                                            annot_fname=random_annot_path,
+                                            hemi=hemi,
+                                            subjects_dir=subjects_dir)
 
-selected_label = mne.read_labels_from_annot(
-    'fsaverage', parc='aparc_sub', subjects_dir=subjects_dir)
-"""
-# transform to the 'sample' subject
-for idx in range(len(selected_label)):
-    print(str(idx+1)+'/'+str(len(selected_label)))
-    selected_label[idx].morph(subject_to="sample",
-             subject_from='fsaverage',
-             subjects_dir=subjects_dir,
-             verbose=True)
-    '''
-    hemi = selected_label[idx].hemi
-    try:
-        if hemi == 'lh':
-            lh_labels += selected_label[idx].copy()
-        elif hemi == 'rh':
-            rh_labels += selected_label[idx].copy()
-    except:
-        if hemi == 'lh':
-            lh_labels = selected_label[idx].copy()
-        elif hemi == 'rh':
-            rh_labels = selected_label[idx].copy()
-    '''
-"""
-# save to the file
-#rh_labels.save('data/annot_sub_rh_sample.label')
-#lh_labels.save('data/annot_sub_lh_sample.label)
-
-# regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
-#import pdb; pdb.set_trace()
 label1 = selected_label[0].copy()
 label2 = selected_label[8].copy()
 label = label1 + label2
-
-# morph labels to other subjects coordinates
-#label1.morph(subject_to="sample",
-#             subject_from='fsaverage',
-#             subjects_dir=subjects_dir,
-#             verbose=True)
-#label2.morph(subject_to="sample",
-#             subject_from='fsaverage',
-#             subjects_dir=subjects_dir,
-#             verbose=True)
-
-
-
-###
-#raw_fname = op.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
-#trans_fname = op.join(data_path, 'MEG', 'sample',
-#                      'sample_audvis_raw-trans.fif')
-#raw = mne.io.read_raw_fif(raw_fname)
-#trans = mne.read_trans(trans_fname)
-
-#fig = mne.viz.plot_alignment(raw.info, trans=trans, subject='sample',
-#                             subjects_dir=subjects_dir, surfaces='head-dense',
-#                             show_axes=True, dig=True, eeg=[], meg='sensors',
-#                             coord_frame='meg')
-#import pdb; pdb.set_trace()
-
-
 
 # Define the time course of the activity for each source of the region to
 # activate. Here we use a sine wave at 18 Hz with a peak amplitude
@@ -131,35 +91,10 @@ epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
 evoked.plot()
 
-
-# png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
-# plot where the signal originates from
-#brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
-#            cortex='low_contrast', background='white', size=(800, 600))
-#brain.add_annotation('aparc_sub', color='k')
-# draws where is the source
-#brain.add_label(label, borders=False, color='b')
-
-#brain.add_label(full_annot, borders=True, color='k')
-#brain.add_label(lh_labels, borders=False, color='b')
-#brain.add_label(rh_labels, borders=False, color='b')
-
-
-#visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
-
-brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir, cortex='low_contrast', background='white', size=(800, 600))
-
-from mne import random_parcellation
-parcel = random_parcellation('sample', 80, 'lh', subjects_dir=subjects_dir,
-                        surface='white', random_state=0)
-
-import os
-random_annot_path = os.path.join(subjects_dir, subject, 'label', 'lh.random80.annot')
-mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir, subject='sample', annot_fname=random_annot_path, overwrite = True)
-
+# visualize the brain with the parcellations and the source of the signal
+brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
+              cortex='low_contrast', background='white', size=(800, 600))
 file_save_brain='fig/brain.png'
-
-#for label in selected_label:
-#    brain.add_label(label, borders= True, color='k')
-brain.add_annotation('random80', color='k')
+brain.add_annotation('random' + str(n), color='k')
+brain.add_label(label)
 brain.save_image(file_save_brain)
