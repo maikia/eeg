@@ -39,32 +39,49 @@ src = fwd['src']
 
 selected_label = mne.read_labels_from_annot(
     'fsaverage', parc='aparc_sub', subjects_dir=subjects_dir)
-# regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
+"""
+# transform to the 'sample' subject
+for idx in range(len(selected_label)):
+    print(str(idx+1)+'/'+str(len(selected_label)))
+    selected_label[idx].morph(subject_to="sample",
+             subject_from='fsaverage',
+             subjects_dir=subjects_dir,
+             verbose=True)
+    '''
+    hemi = selected_label[idx].hemi
+    try:
+        if hemi == 'lh':
+            lh_labels += selected_label[idx].copy()
+        elif hemi == 'rh':
+            rh_labels += selected_label[idx].copy()
+    except:
+        if hemi == 'lh':
+            lh_labels = selected_label[idx].copy()
+        elif hemi == 'rh':
+            rh_labels = selected_label[idx].copy()
+    '''
+"""
+# save to the file
+#rh_labels.save('data/annot_sub_rh_sample.label')
+#lh_labels.save('data/annot_sub_lh_sample.label)
 
+# regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
+#import pdb; pdb.set_trace()
 label1 = selected_label[0].copy()
 label2 = selected_label[8].copy()
-
-# morph labels to other subjects coordinates
-label1.morph(subject_to="sample",
-             subject_from='fsaverage',
-             subjects_dir=subjects_dir,
-             verbose=True)
-label2.morph(subject_to="sample",
-             subject_from='fsaverage',
-             subjects_dir=subjects_dir,
-             verbose=True)
 label = label1 + label2
 
+# morph labels to other subjects coordinates
+#label1.morph(subject_to="sample",
+#             subject_from='fsaverage',
+#             subjects_dir=subjects_dir,
+#             verbose=True)
+#label2.morph(subject_to="sample",
+#             subject_from='fsaverage',
+#             subjects_dir=subjects_dir,
+#             verbose=True)
 
 
-label0 = selected_label[0]
-for idx in range(len(selected_label)-1):
-    label0 + selected_label[idx+1]
-
-full_annot = label0.morph(subject_to="sample",
-             subject_from='fsaverage',
-             subjects_dir=subjects_dir,
-             verbose=True)
 
 ###
 #raw_fname = op.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
@@ -114,16 +131,31 @@ epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
 evoked.plot()
 
-def visualize_loc(subjects_dir, label, file_save_brain):
-    # png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
-    # plot where the signal originates from
-    brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
-                cortex='low_contrast', background='white', size=(800, 600))
-    #brain.add_annotation('aparc_sub', color='k')
-    # draws where is the source
-    brain.add_label(label, borders=False, color='b')
 
-    brain.add_label(full_annot, borders=True, color='k')
-    brain.save_image(file_save_brain)
+# png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
+# plot where the signal originates from
+brain = Brain('sample', 'both', 'inflated', subjects_dir=subjects_dir,
+            cortex='low_contrast', background='white', size=(800, 600))
+#brain.add_annotation('aparc_sub', color='k')
+# draws where is the source
+brain.add_label(label, borders=False, color='b')
 
-visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
+#brain.add_label(full_annot, borders=True, color='k')
+#brain.add_label(lh_labels, borders=False, color='b')
+#brain.add_label(rh_labels, borders=False, color='b')
+file_save_brain='fig/brain.png'
+
+for label in selected_label:
+    brain.add_label(label, borders= True, color='k')
+brain.save_image(file_save_brain)
+
+#visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
+
+brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir, cortex='low_contrast', background='white', size=(800, 600))
+
+from mne import random_parcellation
+parcel = random_parcellation('sample', 80, 'lh', subjects_dir=subjects_dir,
+                        surface='white', random_state=0)
+
+mne.write_labels_to_annot(parcel,subjects_dir=subjects_dir, subject='sample')
+                            annot_fname='random40', hemi='lh')
