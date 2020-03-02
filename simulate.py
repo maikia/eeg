@@ -10,17 +10,20 @@ import mne
 
 parcellation = 'aparc_sub'
 
+
+
 # This will download the data if it not already on your machine. We also set
 # the subjects directory so we don't need to give it to functions.
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
-subject = 'fsaverage'
+subject = 'sample' #'fsaverage'
+
 
 mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
                                           verbose=True)
 
 # First, we get an info structure from the test subject.
-evoked_fname = op.join(data_path, 'MEG', 'sample', 'sample'+'_audvis-ave.fif')
+evoked_fname = op.join(data_path, 'MEG', 'sample', subject+'_audvis-ave.fif')
 info = mne.io.read_info(evoked_fname)
 sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
 info = mne.pick_info(info, sel)
@@ -35,10 +38,49 @@ src = fwd['src']
 
 
 selected_label = mne.read_labels_from_annot(
-    subject, parc='aparc_sub', subjects_dir=subjects_dir)
+    'fsaverage', parc='aparc_sub', subjects_dir=subjects_dir)
 # regexp='caudalmiddlefrontal-lh', subjects_dir=subjects_dir)
 
-label = selected_label[0]
+label1 = selected_label[0].copy()
+label2 = selected_label[8].copy()
+
+# morph labels to other subjects coordinates
+label1.morph(subject_to="sample",
+             subject_from='fsaverage',
+             subjects_dir=subjects_dir,
+             verbose=True)
+label2.morph(subject_to="sample",
+             subject_from='fsaverage',
+             subjects_dir=subjects_dir,
+             verbose=True)
+label = label1 + label2
+
+
+
+label0 = selected_label[0]
+for idx in range(len(selected_label)-1):
+    label0 + selected_label[idx+1]
+
+full_annot = label0.morph(subject_to="sample",
+             subject_from='fsaverage',
+             subjects_dir=subjects_dir,
+             verbose=True)
+
+###
+#raw_fname = op.join(data_path, 'MEG', 'sample', 'sample_audvis_raw.fif')
+#trans_fname = op.join(data_path, 'MEG', 'sample',
+#                      'sample_audvis_raw-trans.fif')
+#raw = mne.io.read_raw_fif(raw_fname)
+#trans = mne.read_trans(trans_fname)
+
+#fig = mne.viz.plot_alignment(raw.info, trans=trans, subject='sample',
+#                             subjects_dir=subjects_dir, surfaces='head-dense',
+#                             show_axes=True, dig=True, eeg=[], meg='sensors',
+#                             coord_frame='meg')
+#import pdb; pdb.set_trace()
+
+
+
 # Define the time course of the activity for each source of the region to
 # activate. Here we use a sine wave at 18 Hz with a peak amplitude
 # of 10 nAm.
@@ -56,7 +98,8 @@ events[:, 2] = 1  # All events have the sample id.
 # add_data method is key. It specified where (label), what
 # (source_time_series), and when (events) an event type will occur.
 source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
-source_simulator.add_data(label, source_time_series, events)
+source_simulator.add_data(label1, source_time_series, events)
+source_simulator.add_data(label2, -source_time_series, events)
 
 # Project the source time series to sensor space and add some noise. The source
 # simulator can be given directly to the simulate_raw function.
@@ -74,13 +117,13 @@ evoked.plot()
 def visualize_loc(subjects_dir, label, file_save_brain):
     # png jpg bmp tiff ps eps pdf rib oogl iv vrml obj
     # plot where the signal originates from
-    brain = Brain(subject, 'lh', 'inflated', subjects_dir=subjects_dir,
+    brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
                 cortex='low_contrast', background='white', size=(800, 600))
-    brain.add_annotation('aparc_sub', color='k')
+    #brain.add_annotation('aparc_sub', color='k')
     # draws where is the source
     brain.add_label(label, borders=False, color='b')
+
+    brain.add_label(full_annot, borders=True, color='k')
     brain.save_image(file_save_brain)
 
 visualize_loc(subjects_dir, label, file_save_brain='fig/brain.png')
-
-
