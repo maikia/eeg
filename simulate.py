@@ -22,7 +22,7 @@ subjects_dir = op.join(data_path, 'subjects')
 
 # we will randomly create a parcellation of n parcels in left hemisphere
 parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
-                        surface='white', random_state=random_state)
+                             surface='white', random_state=random_state)
 
 random_annot_name = hemi + '.random' + str(n) + '.annot'
 random_annot_path = op.join(subjects_dir, subject, 'label', random_annot_name)
@@ -30,10 +30,6 @@ random_annot_path = op.join(subjects_dir, subject, 'label', random_annot_name)
 mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir, subject=subject,
                           annot_fname=random_annot_path,
                           overwrite=True)
-
-
-#mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
-#                                          verbose=True)
 
 # First, we get an info structure from the test subject.
 evoked_fname = op.join(data_path, 'MEG', 'sample', subject+'_audvis-ave.fif')
@@ -94,7 +90,7 @@ evoked.plot()
 # visualize the brain with the parcellations and the source of the signal
 brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
-file_save_brain='fig/brain.png'
+file_save_brain = 'fig/brain.png'
 brain.add_annotation('random' + str(n), color='k')
 brain.add_label(label)
 brain.save_image(file_save_brain)
