@@ -33,6 +33,8 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                               annot_fname=path_annot,
                               overwrite=True)
 
+# check if the annotation already exists, if not create it
+
 make_random_parcellation(random_annot_path, n, hemi, subjects_dir, random_state,
                          subject)
 
@@ -101,10 +103,15 @@ evoked = epochs.average()
 brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
 
-brain.add_annotation('random' + str(n), color='k')
-brain.add_label(label, alpha=0.2)
+#brain.add_annotation('random' + str(n), color='k')
+
+#brain.add_label(label, alpha=0.2)
 # 0 if lh, 1 if rh
-l = mne.vertex_to_mni(label1_center_of_mass, 0, subject, subjects_dir)
+#l = mne.vertex_to_mni(label1_center_of_mass, 0, subject, subjects_dir)
+for label in selected_label:
+    brain.add_label(label, borders=True, color = 'k')
+brain.add_foci([0,0,0], color='k')
+
 
 #brain.add_foci(l, map_surface="white", color="gold")
 brain.add_foci(label1_center_of_mass, coords_as_verts=True, map_surface="white", color="red")
