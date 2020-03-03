@@ -20,16 +20,21 @@ subject = 'sample'
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
 
-# we will randomly create a parcellation of n parcels in left hemisphere
-parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
-                             surface='white', random_state=random_state)
-
 random_annot_name = hemi + '.random' + str(n) + '.annot'
 random_annot_path = op.join(subjects_dir, subject, 'label', random_annot_name)
+# we will randomly create a parcellation of n parcels in left hemisphere
+def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
+                             subject):
+    parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
+                             surface='white', random_state=random_state)
 
-mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir, subject=subject,
-                          annot_fname=random_annot_path,
-                          overwrite=True)
+    mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir,
+                              subject=subject,
+                              annot_fname=path_annot,
+                              overwrite=True)
+
+make_random_parcellation(random_annot_path, n, hemi, subjects_dir, random_state,
+                         subject)
 
 # First, we get an info structure from the test subject.
 evoked_fname = op.join(data_path, 'MEG', 'sample', subject+'_audvis-ave.fif')
@@ -50,9 +55,14 @@ selected_label = mne.read_labels_from_annot(subject=subject,
                                             hemi=hemi,
                                             subjects_dir=subjects_dir)
 
+# calculate center of mass for the labels
+label1_center_of_mass = selected_label[0].center_of_mass(restrict_vertices=True,
+                                          surf='white',
+                                          subjects_dir=subjects_dir)
+
 label1 = selected_label[0].copy()
 label2 = selected_label[8].copy()
-label = label1 + label2
+label = label1 #+ label2
 
 # Define the time course of the activity for each source of the region to
 # activate. Here we use a sine wave at 18 Hz with a peak amplitude
@@ -79,18 +89,24 @@ source_simulator.add_data(label2, -source_time_series, events)
 raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
 cov = mne.make_ad_hoc_cov(raw.info)
 mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.04])
-raw.plot()
+#raw.plot()
 
 # Plot evoked data to get another view of the simulated raw data.
 events = mne.find_events(raw)
 epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
-evoked.plot()
+#evoked.plot()
 
 # visualize the brain with the parcellations and the source of the signal
 brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
-file_save_brain = 'fig/brain.png'
+
 brain.add_annotation('random' + str(n), color='k')
-brain.add_label(label)
+brain.add_label(label, alpha=0.2)
+# 0 if lh, 1 if rh
+l = mne.vertex_to_mni(label1_center_of_mass, 0, subject, subjects_dir)
+
+#brain.add_foci(l, map_surface="white", color="gold")
+brain.add_foci(label1_center_of_mass, coords_as_verts=True, map_surface="white", color="red")
+file_save_brain = 'fig/brain.png'
 brain.save_image(file_save_brain)
