@@ -15,6 +15,7 @@ n = 100
 random_state = 0
 hemi = 'lh'
 subject = 'sample'
+recalculate_parcels = True
 
 # Here we are creating the directories/files for left and right hemisphere data
 data_path = mne.datasets.sample.data_path()
@@ -30,12 +31,44 @@ if ((hemi == 'both') or (hemi == 'rh')):
                                    random_annot_name_rh)
 
 
+def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
+    import os
+    import numpy as np
+    import nibabel as nib
+    from mne.datasets import sample
+
+    data_path = sample.data_path()
+    aparc_file = os.path.join(subjects_dir,
+                         subject, "label",
+                         hemi + ".aparc.a2009s.annot")
+
+    labels = mne.read_labels_from_annot(subject=subject,
+                               annot_fname=aparc_file,
+                                            hemi=hemi,
+                                            subjects_dir=subjects_dir)
+
+    assert labels[-1].name[:7] == 'Unknown'  # corpus callosum
+    return labels[-1]
+
+
+# remove those parcels which overlap with corpus callosum
+def remove_overlapping(parcels, xparcel):
+    not_overlapping = []
+    for parcel in parcels:
+        if not np.any(np.isin(parcel.vertices, xparcel.vertices)):
+            not_overlapping.append(parcel)
+    return not_overlapping
+
+
 # we will randomly create a parcellation of n parcels in one hemisphere
 def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
-                             subject):
+                             subject, remove_corpus_callosum = False):
     parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
                                  surface='white', random_state=random_state)
 
+    if remove_corpus_callosum:
+        xparcel = find_corpus_callosum(subject, subjects_dir, hemi=hemi)
+        parcel = remove_overlapping(parcel, xparcel)
     mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir,
                               subject=subject,
                               annot_fname=path_annot,
@@ -53,13 +86,17 @@ def find_centers_of_mass(parcellation, subjects_dir):
 
 
 # check if the annotation already exists, if not create it
-if ((hemi == 'both') or (hemi == 'lh')) and not op.exists(random_annot_path_lh):
+if (recalculate_parcels or not op.exists(random_annot_path_lh)) and \
+   ((hemi == 'both') or (hemi == 'lh')):
     make_random_parcellation(random_annot_path_lh, n, 'lh', subjects_dir,
-                             random_state, subject)
+                             random_state, subject,
+                             remove_corpus_callosum=True)
 
-if ((hemi == 'both') or (hemi == 'rh')) and not op.exists(random_annot_path_rh):
+if (recalculate_parcels or not op.exists(random_annot_path_rh)) and \
+   ((hemi == 'both') or (hemi == 'rh')):
     make_random_parcellation(random_annot_path_rh, n, 'rh', subjects_dir,
-                             random_state, subject)
+                             random_state, subject,
+                             remove_corpus_callosum=True)
 
 # read the labels from annot
 if ((hemi == 'both') or (hemi == 'lh')):
@@ -94,37 +131,6 @@ elif hemi_selected == 'rh':
     l1_center_of_mass.vertices = [cm_rh[parcel_selected]]
     parcel_used = parcels_rh[parcel_selected]
 
-
-def find_corpus_callosum():
-    import os
-    import numpy as np
-    import nibabel as nib
-    from mne.datasets import sample
-
-    data_path = sample.data_path()
-    fname_inv = data_path + '/MEG/sample/sample_audvis-meg-oct-6-meg-inv.fif'
-    fname_evoked = data_path + '/MEG/sample/sample_audvis-ave.fif'
-    subjects_dir = data_path + '/subjects'
-
-    subject_id = 'sample'
-    hemi = 'lh'
-
-    aparc_file = os.path.join(subjects_dir,
-                         subject_id, "label",
-                         hemi + ".aparc.a2009s.annot")
-    #labels, ctab, names = nib.freesurfer.read_annot(aparc_file)
-
-    labels = mne.read_labels_from_annot(subject=subject_id,
-                               annot_fname=aparc_file,
-                                            hemi=hemi,
-                                            subjects_dir=subjects_dir)
-
-    #vertices_in_label_unknown = np.where(labels == 1)
-    #assert names[0] == b'Unknown'  # label 0
-    #what I mean by label 0 is the first label in the aparc
-    #let me know if it's not clear
-    return labels
-labels = find_corpus_callosum()
 
 def generate_signal(data_path, subject, parcel):
     # Generate the signal
@@ -189,10 +195,11 @@ brain = Brain('sample', hemi, 'inflated', subjects_dir=subjects_dir,
 
 #brain.add_label(parcel_used, alpha=0.5, color='r')
 #brain.add_label(parcels_rh[0], alpha=0.5, color='b')
-brain.add_label(labels[-1], alpha=0.5, color='b')
+#brain.add_label(corpus_callosum, alpha=0.5, color='b')
 #brain.add_label(parcels_rh[0], alpha=0.5, color='b')
 # 0 if lh, 1 if rh
 # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
+brain.add_annotation(parcels_lh, borders = True)
 
 #for center in cm_lh:
 #    brain.add_foci(center, coords_as_verts=True, map_surface="white",
