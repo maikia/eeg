@@ -13,7 +13,7 @@ from mne import random_parcellation
 # same variables
 n = 100
 random_state = 0
-hemi = 'lh'
+hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True
 
@@ -199,8 +199,10 @@ brain = Brain('sample', hemi, 'inflated', subjects_dir=subjects_dir,
 #brain.add_label(parcels_rh[0], alpha=0.5, color='b')
 # 0 if lh, 1 if rh
 # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
-brain.add_annotation(parcels_lh, borders = True)
-
+if hemi == 'lh' or hemi == 'both':
+    brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
+if hemi == 'rh' or hemi == 'both':
+    brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
 #for center in cm_lh:
 #    brain.add_foci(center, coords_as_verts=True, map_surface="white",
 #                   color="gold", hemi=hemi_selected)
