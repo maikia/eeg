@@ -79,6 +79,58 @@ def find_centers_of_mass(parcellation, subjects_dir):
     return centers.astype('int')
 
 
+def generate_signal(data_path, subject, parcels):
+    signal_len = 10
+    # Generate the signal
+    # First, we get an info structure from the test subject.
+    evoked_fname = op.join(data_path, 'MEG', subject,
+                           subject+'_audvis-ave.fif')
+    info = mne.io.read_info(evoked_fname)
+    sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
+    info = mne.pick_info(info, sel)
+    tstep = 1. / info['sfreq']
+
+    # To simulate sources, we also need a source space. It can be obtained from
+    # the forward solution of the sample subject.
+    fwd_fname = op.join(data_path, 'MEG', subject,
+                        subject+'_audvis-meg-eeg-oct-6-fwd.fif')
+    fwd = mne.read_forward_solution(fwd_fname)
+    src = fwd['src']
+
+    # Define the time course of the activity for each source of the region to
+    # activate. Here we use a sine wave at 18 Hz with a peak amplitude
+    # of 10 nAm.
+    source_time_series = np.sin(2. * np.pi * 18. *
+                                np.arange(signal_len*len(parcels)) * tstep
+                                ) * 10e-9
+
+    # Define when the activity occurs using events. The first column is the
+    # sample of the event, the second is not used, and the third is the event
+    # id. Here the events occur every 200 samples.
+    n_events = 10
+    events = np.zeros((n_events, 3))
+    events[:, 0] = signal_len*len(parcels) + 200 * np.arange(n_events)  # Events sample.
+    events[:, 2] = 1  # All events have the sample id.
+
+    # Create simulated source activity. Here we use a SourceSimulator whose
+    # add_data method is key. It specified where (label), what
+    # (source_time_series), and when (events) an event type will occur.
+    source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
+    for idx, parcel in enumerate(parcels):
+        # each signale will be shifted by 5 data point in each next parcel
+        source_simulator.add_data(parcel,
+                                  source_time_series[5*idx:signal_len+5*idx],
+                                  events)
+
+    # Project the source time series to sensor space and add some noise.
+    # The source simulator can be given directly to the simulate_raw function.
+    raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
+    cov = mne.make_ad_hoc_cov(raw.info)
+    mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
+
+    return events, source_time_series, raw
+
+
 # check if the annotation already exists, if not create it
 if (recalculate_parcels or not op.exists(random_annot_path_lh)) and \
    ((hemi == 'both') or (hemi == 'lh')):
@@ -109,71 +161,32 @@ if ((hemi == 'both') or (hemi == 'rh')):
 
 # randomly choose how many parcels will be activated, left or right hemisphere
 # and exact parcels
-n_parcels = random.randint(1, 1)
-if hemi == 'both':
-    hemi_selected = random.choices(['lh', 'rh'], weights=[1, 1])[0]
-else:
-    hemi_selected = hemi
-parcel_selected = random.randint(0, n-1)
+n_parcels = random.randint(1, 3)
+to_activate = []
+parcels_selected = []
+for idx in range(n_parcels):
+    if hemi == 'both':
+        hemi_selected = random.choices(['lh', 'rh'], weights=[1, 1])[0]
+    else:
+        hemi_selected = hemi
 
-if hemi_selected == 'lh':
-    l1_center_of_mass = parcels_lh[parcel_selected].copy()
-    l1_center_of_mass.vertices = [cm_lh[parcel_selected]]
-    parcel_used = parcels_lh[parcel_selected]
-elif hemi_selected == 'rh':
-    l1_center_of_mass = parcels_rh[parcel_selected].copy()
-    l1_center_of_mass.vertices = [cm_rh[parcel_selected]]
-    parcel_used = parcels_rh[parcel_selected]
+    if hemi_selected == 'lh':
+        parcel_selected = random.randint(0, len(parcels_lh))
+        l1_center_of_mass = parcels_lh[parcel_selected].copy()
+        l1_center_of_mass.vertices = [cm_lh[parcel_selected]]
+        parcel_used = parcels_lh[parcel_selected]
+    elif hemi_selected == 'rh':
+        parcel_selected = random.randint(0, len(parcels_rh))
+        l1_center_of_mass = parcels_rh[parcel_selected].copy()
+        l1_center_of_mass.vertices = [cm_rh[parcel_selected]]
+        parcel_used = parcels_rh[parcel_selected]
+    to_activate.append(l1_center_of_mass)
+    parcels_selected.append(parcel_used)
 
-
-def generate_signal(data_path, subject, parcel):
-    # Generate the signal
-    # First, we get an info structure from the test subject.
-    evoked_fname = op.join(data_path, 'MEG', subject,
-                           subject+'_audvis-ave.fif')
-    info = mne.io.read_info(evoked_fname)
-    sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
-    info = mne.pick_info(info, sel)
-    tstep = 1. / info['sfreq']
-
-    # To simulate sources, we also need a source space. It can be obtained from
-    # the forward solution of the sample subject.
-    fwd_fname = op.join(data_path, 'MEG', subject,
-                        subject+'_audvis-meg-eeg-oct-6-fwd.fif')
-    fwd = mne.read_forward_solution(fwd_fname)
-    src = fwd['src']
-
-    # Define the time course of the activity for each source of the region to
-    # activate. Here we use a sine wave at 18 Hz with a peak amplitude
-    # of 10 nAm.
-    source_time_series = np.sin(2. * np.pi * 18. * np.arange(100) * tstep
-                                ) * 10e-9
-
-    # Define when the activity occurs using events. The first column is the
-    # sample of the event, the second is not used, and the third is the event
-    # id. Here the events occur every 200 samples.
-    n_events = 50
-    events = np.zeros((n_events, 3))
-    events[:, 0] = 100 + 200 * np.arange(n_events)  # Events sample.
-    events[:, 2] = 1  # All events have the sample id.
-
-    # Create simulated source activity. Here we use a SourceSimulator whose
-    # add_data method is key. It specified where (label), what
-    # (source_time_series), and when (events) an event type will occur.
-    source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
-    source_simulator.add_data(parcel, source_time_series, events)
-
-    # Project the source time series to sensor space and add some noise.
-    # The source simulator can be given directly to the simulate_raw function.
-    raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
-    cov = mne.make_ad_hoc_cov(raw.info)
-    mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
-
-    return events, source_time_series, raw
-
-
-events, source_time_series, raw = generate_signal(data_path, subject,
-                                                  parcel=l1_center_of_mass)
+# activate selected parcels
+for idx in range(n_parcels):
+    events, source_time_series, raw = generate_signal(data_path, subject,
+                                                  parcels=to_activate)
 
 raw.plot()
 
@@ -183,23 +196,25 @@ epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
 evoked.plot()
 
-# visualize the brain with the parcellations and the source of the signal
-brain = Brain('sample', hemi, 'inflated', subjects_dir=subjects_dir,
+def visualize_brain(subject, hemi, subjects_dir):
+    # visualize the brain with the parcellations and the source of the signal
+    brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
 
-# brain.add_label(parcel_used, alpha=0.5, color='r')
-# brain.add_label(parcels_rh[0], alpha=0.5, color='b')
-# brain.add_label(corpus_callosum, alpha=0.5, color='b')
-# brain.add_label(parcels_rh[0], alpha=0.5, color='b')
-# 0 if lh, 1 if rh
-# l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
-if hemi == 'lh' or hemi == 'both':
-    brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
-if hemi == 'rh' or hemi == 'both':
-    brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
-# for center in cm_lh:
-#    brain.add_foci(center, coords_as_verts=True, map_surface="white",
-#                   color="gold", hemi=hemi_selected)
+    # brain.add_label(parcel_used, alpha=0.5, color='r')
+    # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
+    # brain.add_label(corpus_callosum, alpha=0.5, color='b')
+    # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
+    # 0 if lh, 1 if rh
+    # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
+    if hemi == 'lh' or hemi == 'both':
+        brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
+    if hemi == 'rh' or hemi == 'both':
+        brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
+    # for center in cm_lh:
+    #    brain.add_foci(center, coords_as_verts=True, map_surface="white",
+    #                   color="gold", hemi=hemi_selected)
 
-file_save_brain = 'fig/brain.png'
-brain.save_image(file_save_brain)
+    file_save_brain = 'fig/brain.png'
+    brain.save_image(file_save_brain)
+visualize_brain(subject, hemi, subjects_dir)
