@@ -32,20 +32,14 @@ if ((hemi == 'both') or (hemi == 'rh')):
 
 
 def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
-    import os
-    import numpy as np
-    import nibabel as nib
-    from mne.datasets import sample
-
-    data_path = sample.data_path()
-    aparc_file = os.path.join(subjects_dir,
+    aparc_file = op.join(subjects_dir,
                          subject, "label",
                          hemi + ".aparc.a2009s.annot")
 
     labels = mne.read_labels_from_annot(subject=subject,
-                               annot_fname=aparc_file,
-                                            hemi=hemi,
-                                            subjects_dir=subjects_dir)
+                                        annot_fname=aparc_file,
+                                        hemi=hemi,
+                                        subjects_dir=subjects_dir)
 
     assert labels[-1].name[:7] == 'Unknown'  # corpus callosum
     return labels[-1]
@@ -62,7 +56,7 @@ def remove_overlapping(parcels, xparcel):
 
 # we will randomly create a parcellation of n parcels in one hemisphere
 def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
-                             subject, remove_corpus_callosum = False):
+                             subject, remove_corpus_callosum=False):
     parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
                                  surface='white', random_state=random_state)
 
@@ -193,17 +187,17 @@ evoked.plot()
 brain = Brain('sample', hemi, 'inflated', subjects_dir=subjects_dir,
               cortex='low_contrast', background='white', size=(800, 600))
 
-#brain.add_label(parcel_used, alpha=0.5, color='r')
-#brain.add_label(parcels_rh[0], alpha=0.5, color='b')
-#brain.add_label(corpus_callosum, alpha=0.5, color='b')
-#brain.add_label(parcels_rh[0], alpha=0.5, color='b')
+# brain.add_label(parcel_used, alpha=0.5, color='r')
+# brain.add_label(parcels_rh[0], alpha=0.5, color='b')
+# brain.add_label(corpus_callosum, alpha=0.5, color='b')
+# brain.add_label(parcels_rh[0], alpha=0.5, color='b')
 # 0 if lh, 1 if rh
 # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
 if hemi == 'lh' or hemi == 'both':
     brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
 if hemi == 'rh' or hemi == 'both':
     brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
-#for center in cm_lh:
+# for center in cm_lh:
 #    brain.add_foci(center, coords_as_verts=True, map_surface="white",
 #                   color="gold", hemi=hemi_selected)
 
