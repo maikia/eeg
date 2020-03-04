@@ -165,6 +165,11 @@ if ((hemi == 'both') or (hemi == 'rh')):
 n_parcels = random.randint(1, 3)
 to_activate = []
 parcels_selected = []
+# do this so that the same label is not selected twice
+deck_lh = list(range(0, len(parcels_lh)))
+random.shuffle(deck_lh)
+deck_rh = list(range(0, len(parcels_rh)))
+random.shuffle(deck_rh)
 for idx in range(n_parcels):
     if hemi == 'both':
         hemi_selected = random.choices(['lh', 'rh'], weights=[1, 1])[0]
@@ -172,12 +177,12 @@ for idx in range(n_parcels):
         hemi_selected = hemi
 
     if hemi_selected == 'lh':
-        parcel_selected = random.randint(0, len(parcels_lh))
+        parcel_selected = deck_lh.pop()
         l1_center_of_mass = parcels_lh[parcel_selected].copy()
         l1_center_of_mass.vertices = [cm_lh[parcel_selected]]
         parcel_used = parcels_lh[parcel_selected]
     elif hemi_selected == 'rh':
-        parcel_selected = random.randint(0, len(parcels_rh))
+        parcel_selected = deck_rh.pop()
         l1_center_of_mass = parcels_rh[parcel_selected].copy()
         l1_center_of_mass.vertices = [cm_rh[parcel_selected]]
         parcel_used = parcels_rh[parcel_selected]
@@ -198,12 +203,13 @@ evoked = epochs.average()
 evoked.plot()
 
 
-def visualize_brain(subject, hemi, subjects_dir):
+def visualize_brain(subject, hemi, subjects_dir, parcels_selected):
     # visualize the brain with the parcellations and the source of the signal
     brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
                   cortex='low_contrast', background='white', size=(800, 600))
 
-    # brain.add_label(parcel_used, alpha=0.5, color='r')
+    for parcel in parcels_selected:
+        brain.add_label(parcel, alpha=1, color='r')
     # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
     # brain.add_label(corpus_callosum, alpha=0.5, color='b')
     # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
@@ -223,4 +229,4 @@ def visualize_brain(subject, hemi, subjects_dir):
     brain.save_image(file_save_brain)
 
 
-visualize_brain(subject, hemi, subjects_dir)
+visualize_brain(subject, hemi, subjects_dir, parcels_selected)
