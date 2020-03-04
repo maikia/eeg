@@ -22,7 +22,8 @@ subjects_dir = op.join(data_path, 'subjects')
 
 random_annot_name = hemi + '.random' + str(n) + '.annot'
 random_annot_path = op.join(subjects_dir, subject, 'label', random_annot_name)
-# we will randomly create a parcellation of n parcels in left hemisphere
+
+# we will randomly create a parcellation of n parcels in one hemisphere
 def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                              subject):
     parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
@@ -33,11 +34,29 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                               annot_fname=path_annot,
                               overwrite=True)
 
-# check if the annotation already exists, if not create it
+def find_centers_of_mass(parcellation, subjects_dir):
+    centers = np.zeros([len(parcellation)])
+    # calculate center of mass for the labels
+    for idx, parcel in enumerate(parcellation):
+        centers[idx] = parcel.center_of_mass(restrict_vertices=True,
+                                            surf='white',
+                                            subjects_dir=subjects_dir)
+    return centers.astype('int')
 
+
+# check if the annotation already exists, if not create it
 make_random_parcellation(random_annot_path, n, hemi, subjects_dir, random_state,
                          subject)
 
+# read the labels from annot
+parcellation = mne.read_labels_from_annot(subject=subject,
+                                            annot_fname=random_annot_path,
+                                            hemi=hemi,
+                                            subjects_dir=subjects_dir)
+centers_of_mass = find_centers_of_mass(parcellation, subjects_dir)
+
+
+# Generate the signal
 # First, we get an info structure from the test subject.
 evoked_fname = op.join(data_path, 'MEG', 'sample', subject+'_audvis-ave.fif')
 info = mne.io.read_info(evoked_fname)
@@ -52,21 +71,18 @@ fwd_fname = op.join(data_path, 'MEG', 'sample',
 fwd = mne.read_forward_solution(fwd_fname)
 src = fwd['src']
 
-selected_label = mne.read_labels_from_annot(subject=subject,
-                                            annot_fname=random_annot_path,
-                                            hemi=hemi,
-                                            subjects_dir=subjects_dir)
+
 
 # calculate center of mass for the labels
-label1_center_of_mass = selected_label[0].center_of_mass(restrict_vertices=True,
-                                          surf='white',
-                                          subjects_dir=subjects_dir)
+#label1_center_of_mass = centers_of_mass[0].center_of_mass(restrict_vertices=True,
+#                                          surf='white',
+#                                          subjects_dir=subjects_dir)
 
-l1_center_of_mass = selected_label[0].copy()
-l1_center_of_mass.vertices = [label1_center_of_mass]
+l1_center_of_mass = parcellation[0].copy()
+l1_center_of_mass.vertices = [centers_of_mass[0]]
 
-label1 = selected_label[0].copy()
-label2 = selected_label[8].copy()
+label1 = parcellation[0].copy()
+label2 = parcellation[8].copy()
 label = label1 #+ label2
 
 # Define the time course of the activity for each source of the region to
@@ -86,7 +102,7 @@ events[:, 2] = 1  # All events have the sample id.
 # add_data method is key. It specified where (label), what
 # (source_time_series), and when (events) an event type will occur.
 source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
-source_simulator.add_data(l1_center_of_mass, source_time_series, events)
+#source_simulator.add_data(l1_center_of_mass, source_time_series, events)
 source_simulator.add_data(label2, -source_time_series, events)
 
 # Project the source time series to sensor space and add some noise. The source
@@ -110,10 +126,14 @@ brain = Brain('sample', 'lh', 'inflated', subjects_dir=subjects_dir,
 
 brain.add_label(label, alpha=0.2)
 # 0 if lh, 1 if rh
-l = mne.vertex_to_mni(label1_center_of_mass, 0, subject, subjects_dir)
+l = mne.vertex_to_mni(centers_of_mass[0], 0, subject, subjects_dir)
 
 
 #brain.add_foci(l, map_surface="white", color="gold")
-brain.add_foci(label1_center_of_mass, coords_as_verts=True, map_surface="white", color="red")
+#brain.add_foci(label1_center_of_mass, coords_as_verts=True,
+#map_surface="white", color="red")
+for center in centers_of_mass:
+    brain.add_foci(center, coords_as_verts=True,
+                    map_surface="white", color="red")
 file_save_brain = 'fig/brain.png'
 brain.save_image(file_save_brain)
