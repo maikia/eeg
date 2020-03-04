@@ -109,7 +109,8 @@ def generate_signal(data_path, subject, parcels):
     # id. Here the events occur every 200 samples.
     n_events = 10
     events = np.zeros((n_events, 3))
-    events[:, 0] = signal_len*len(parcels) + 200 * np.arange(n_events)  # Events sample.
+    # Events sample
+    events[:, 0] = signal_len*len(parcels) + 200 * np.arange(n_events)
     events[:, 2] = 1  # All events have the sample id.
 
     # Create simulated source activity. Here we use a SourceSimulator whose
@@ -186,7 +187,7 @@ for idx in range(n_parcels):
 # activate selected parcels
 for idx in range(n_parcels):
     events, source_time_series, raw = generate_signal(data_path, subject,
-                                                  parcels=to_activate)
+                                                      parcels=to_activate)
 
 raw.plot()
 
@@ -196,25 +197,30 @@ epochs = mne.Epochs(raw, events, 1, tmin=-0.05, tmax=0.2)
 evoked = epochs.average()
 evoked.plot()
 
+
 def visualize_brain(subject, hemi, subjects_dir):
     # visualize the brain with the parcellations and the source of the signal
     brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
-              cortex='low_contrast', background='white', size=(800, 600))
+                  cortex='low_contrast', background='white', size=(800, 600))
 
     # brain.add_label(parcel_used, alpha=0.5, color='r')
     # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
     # brain.add_label(corpus_callosum, alpha=0.5, color='b')
     # brain.add_label(parcels_rh[0], alpha=0.5, color='b')
     # 0 if lh, 1 if rh
-    # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0, subject, subjects_dir)
+    # l = mne.vertex_to_mni(l1_center_of_mass.vertices, 0,subject,subjects_dir)
     if hemi == 'lh' or hemi == 'both':
-        brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
+        brain.add_annotation('random' + str(n), borders=True, color='r',
+                             alpha=0.2)
     if hemi == 'rh' or hemi == 'both':
-        brain.add_annotation('random' + str(n), borders=True, color='r', alpha=0.2)
+        brain.add_annotation('random' + str(n), borders=True, color='r',
+                             alpha=0.2)
     # for center in cm_lh:
     #    brain.add_foci(center, coords_as_verts=True, map_surface="white",
     #                   color="gold", hemi=hemi_selected)
 
     file_save_brain = 'fig/brain.png'
     brain.save_image(file_save_brain)
+
+
 visualize_brain(subject, hemi, subjects_dir)
