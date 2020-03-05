@@ -1,4 +1,8 @@
 import numpy as np
+import os.path as op
+
+import mne
+from raw_signal import random_parcellation
 
 
 def find_corpus_callosum(subject, subjects_dir, hemi='lh'):

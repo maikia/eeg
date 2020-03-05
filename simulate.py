@@ -1,28 +1,27 @@
 import os.path as op
 import random
 
-import numpy as np
-
-
 import mne
-from mne import random_parcellation
 
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.plot_signal import visualize_brain
+from simulation.raw_signal import make_random_parcellation
 
 # IMPORTANT: run it with ipython --gui=qt
+
 
 def prepare_parcels():
     pass
 
+
 def init_signal():
     # same variables
-    n = 100 # initial number of parcels (corpsu callosum will be excluded)
+    n = 100  # initial number of parcels (corpsu callosum will be excluded)
     random_state = 0
     hemi = 'both'
     subject = 'sample'
-    recalculate_parcels = False # initiate new random parcels
+    recalculate_parcels = False  # initiate new random parcels
 
     # Here we are creating the directories/files for left and right hemisphere
     data_path = mne.datasets.sample.data_path()
@@ -31,24 +30,24 @@ def init_signal():
     if ((hemi == 'both') or (hemi == 'lh')):
         random_annot_name_lh = 'lh.random' + str(n) + '.annot'
         random_annot_path_lh = op.join(subjects_dir, subject, 'label',
-                                   random_annot_name_lh)
+                                       random_annot_name_lh)
     if ((hemi == 'both') or (hemi == 'rh')):
         random_annot_name_rh = 'rh.random' + str(n) + '.annot'
         random_annot_path_rh = op.join(subjects_dir, subject, 'label',
-                                    random_annot_name_rh)
+                                       random_annot_name_rh)
 
     # check if the annotation already exists, if not create it
     if (recalculate_parcels or not op.exists(random_annot_path_lh)) and \
-    ((hemi == 'both') or (hemi == 'lh')):
+       ((hemi == 'both') or (hemi == 'lh')):
         make_random_parcellation(random_annot_path_lh, n, 'lh', subjects_dir,
-                                random_state, subject,
-                                remove_corpus_callosum=True)
+                                 random_state, subject,
+                                 remove_corpus_callosum=True)
 
     if (recalculate_parcels or not op.exists(random_annot_path_rh)) and \
-    ((hemi == 'both') or (hemi == 'rh')):
+       ((hemi == 'both') or (hemi == 'rh')):
         make_random_parcellation(random_annot_path_rh, n, 'rh', subjects_dir,
-                                random_state, subject,
-                                remove_corpus_callosum=True)
+                                 random_state, subject,
+                                 remove_corpus_callosum=True)
 
     # read the labels from annot
     if ((hemi == 'both') or (hemi == 'lh')):
@@ -64,9 +63,8 @@ def init_signal():
                                                 subjects_dir=subjects_dir)
         cm_rh = find_centers_of_mass(parcels_rh, subjects_dir)
 
-
-    # randomly choose how many parcels will be activated, left or right hemisphere
-    # and exact parcels
+    # randomly choose how many parcels will be activated, left or right
+    # hemisphere and exact parcels
     n_parcels = random.randint(1, 3)
     to_activate = []
     parcels_selected = []
@@ -97,7 +95,7 @@ def init_signal():
     # activate selected parcels
     for idx in range(n_parcels):
         events, source_time_series, raw = generate_signal(data_path, subject,
-                                                        parcels=to_activate)
+                                                          parcels=to_activate)
 
     raw.plot()
 
@@ -105,15 +103,14 @@ def init_signal():
                     parcels_selected)
 
     # as the signal given give a single point at
-    data = raw.get_data() # 59 electrodes + 10 sti channels
+    data = raw.get_data()  # 59 electrodes + 10 sti channels
 
-    e_data = data[9:,:]
+    e_data = data[9:, :]
     get_data_at = 100
-    e_data[:,get_data_at]
+    e_data[:, get_data_at]
     print(parcels_selected)
     print(len(parcels_rh))
     print(len(parcels_lh))
-
 
 
 init_signal()

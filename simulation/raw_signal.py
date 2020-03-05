@@ -3,6 +3,7 @@ import os.path as op
 import numpy as np
 import mne
 
+
 def generate_signal(data_path, subject, parcels):
     signal_len = 10
     # Generate the signal
