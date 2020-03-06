@@ -1,4 +1,6 @@
+import numpy as np
 import os.path as op
+import pandas as pd
 import random
 
 import mne
@@ -21,7 +23,7 @@ def init_signal():
     random_state = 10
     hemi = 'both'
     subject = 'sample'
-    recalculate_parcels = True  # initiate new random parcels
+    recalculate_parcels = False  # initiate new random parcels
 
     # Here we are creating the directories/files for left and right hemisphere
     data_path = mne.datasets.sample.data_path()
@@ -110,12 +112,25 @@ def init_signal():
 
     e_data = data[9:, :]
     get_data_at = 100
-    return e_data[:, get_data_at], parcels_selected
+
     print(parcels_selected)
     print(len(parcels_rh))
     print(len(parcels_lh))
+    return e_data[:, get_data_at], parcels_selected
 
 
-number_of_samples = 100
+number_of_samples = 3
+data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
+
+
+signal_list = []
+target_list = []
 for sample in range(number_of_samples):
     signal, parcels = init_signal()
+    signal_list.append(signal)
+    target_list.append(parcels)
+
+signal_list = np.array(signal_list)
+df = pd.DataFrame(signal_list, columns=list(data_labels))
+
+data_labels = { data_labels[idx] : signal_list[:,idx] for idx in range(len(data_labels)) }
