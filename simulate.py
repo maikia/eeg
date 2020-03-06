@@ -21,7 +21,7 @@ def init_signal():
     random_state = 10
     hemi = 'both'
     subject = 'sample'
-    recalculate_parcels = False  # initiate new random parcels
+    recalculate_parcels = True  # initiate new random parcels
 
     # Here we are creating the directories/files for left and right hemisphere
     data_path = mne.datasets.sample.data_path()
@@ -56,13 +56,18 @@ def init_signal():
                                                 hemi='lh',
                                                 subjects_dir=subjects_dir)
         cm_lh = find_centers_of_mass(parcels_lh, subjects_dir)
+        # remove the last, unknown label which is corpus callosum
+        assert parcels_lh[-1].name[:7] == 'unknown'
+        parcels_lh = parcels_lh[:-1]
     if ((hemi == 'both') or (hemi == 'rh')):
         parcels_rh = mne.read_labels_from_annot(subject=subject,
                                                 annot_fname=random_annot_path_rh,
                                                 hemi='rh',
                                                 subjects_dir=subjects_dir)
+        # remove the last, unknown label which is corpus callosum
+        assert parcels_rh[-1].name[:7] == 'unknown'
+        parcels_rh = parcels_rh[:-1]
         cm_rh = find_centers_of_mass(parcels_rh, subjects_dir)
-
     # randomly choose how many parcels will be activated, left or right
     # hemisphere and exact parcels
     n_parcels = random.randint(1, 3)
@@ -118,6 +123,5 @@ import matplotlib.pylab as plt
 for sample in range(number_of_samples):
     signal, parcels = init_signal()
     plt.plot(signal)
-    print(len(parcels))
 
 plt.show()

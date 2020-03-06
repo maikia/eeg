@@ -43,7 +43,7 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                               annot_fname=path_annot,
                               overwrite=True)
 
-plt.figure()
+
 def find_centers_of_mass(parcellation, subjects_dir):
     centers = np.zeros([len(parcellation)])
     # calculate center of mass for the labels
