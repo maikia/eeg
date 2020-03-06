@@ -13,22 +13,8 @@ from simulation.parcels import make_random_parcellation
 # IMPORTANT: run it with ipython --gui=qt
 
 
-def prepare_parcels():
-    pass
-
-
-def init_signal():
-    # same variables
-    n = 100  # initial number of parcels (corpsu callosum will be excluded)
-    random_state = 10
-    hemi = 'both'
-    subject = 'sample'
-    recalculate_parcels = False  # initiate new random parcels
-
-    # Here we are creating the directories/files for left and right hemisphere
-    data_path = mne.datasets.sample.data_path()
-    subjects_dir = op.join(data_path, 'subjects')
-
+def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
+                    recalculate_parcels = True):
     if ((hemi == 'both') or (hemi == 'lh')):
         random_annot_name_lh = 'lh.random' + str(n) + '.annot'
         random_annot_path_lh = op.join(subjects_dir, subject, 'label',
@@ -41,13 +27,15 @@ def init_signal():
     # check if the annotation already exists, if not create it
     if (recalculate_parcels or not op.exists(random_annot_path_lh)) and \
        ((hemi == 'both') or (hemi == 'lh')):
-        make_random_parcellation(random_annot_path_lh, n, 'lh', subjects_dir,
+        make_random_parcellation(random_annot_path_lh, n_parcels,
+                                 'lh', subjects_dir,
                                  random_state, subject,
                                  remove_corpus_callosum=True)
 
     if (recalculate_parcels or not op.exists(random_annot_path_rh)) and \
        ((hemi == 'both') or (hemi == 'rh')):
-        make_random_parcellation(random_annot_path_rh, n, 'rh', subjects_dir,
+        make_random_parcellation(random_annot_path_rh, n_parcels, 'rh',
+                                 subjects_dir,
                                  random_state, subject,
                                  remove_corpus_callosum=True)
 
@@ -70,8 +58,29 @@ def init_signal():
         assert parcels_rh[-1].name[:7] == 'unknown'
         parcels_rh = parcels_rh[:-1]
         cm_rh = find_centers_of_mass(parcels_rh, subjects_dir)
+
+    if hemi == 'both':
+        return [parcels_lh, parcels_rh], [cm_lh, cm_rh]
+    elif hemi == 'rh':
+        return [parcels_rh], [cm_rh]
+    elif hemi == 'lh':
+        return [parcel_lh], [cm_lh]
+
+
+def init_signal(parcels, cms, hemi):
     # randomly choose how many parcels will be activated, left or right
     # hemisphere and exact parcels
+    if hemi == 'both':
+        import pdb; pdb.set_trace()
+        parcels_lh, parcels_rh = parcels
+        cm_lh, cm_rh = cms
+    elif hemi == 'rh':
+        [parcels_rh] = parcels
+        [cm_rh] = cms
+    elif hemi == 'lh':
+        [parcels_lh] = parcels
+        [cm_lh] = cms
+
     n_parcels = random.randint(1, 3)
     to_activate = []
     parcels_selected = []
@@ -113,24 +122,34 @@ def init_signal():
     e_data = data[9:, :]
     get_data_at = 100
 
-    print(parcels_selected)
-    print(len(parcels_rh))
-    print(len(parcels_lh))
     return e_data[:, get_data_at], parcels_selected
 
 
+# same variables
+n = 100  # initial number of parcels (corpsu callosum will be excluded)
+random_state = 10
+hemi = 'both'
+subject = 'sample'
+recalculate_parcels = True  # initiate new random parcels
 number_of_samples = 3
+
+# Here we are creating the directories/files for left and right hemisphere
+data_path = mne.datasets.sample.data_path()
+subjects_dir = op.join(data_path, 'subjects')
+
+parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi, n_parcels=n,
+                               recalculate_parcels=recalculate_parcels)
+
 data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
-
-
 signal_list = []
 target_list = []
 for sample in range(number_of_samples):
-    signal, parcels = init_signal()
+    signal, parcels_used = init_signal(parcels, cms, hemi)
     signal_list.append(signal)
-    target_list.append(parcels)
+    target_list.append(parcels_used)
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
 
-data_labels = { data_labels[idx] : signal_list[:,idx] for idx in range(len(data_labels)) }
+data_labels = { data_labels[idx] : signal_list[:,idx] for idx in
+               range(len(data_labels)) }
