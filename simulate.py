@@ -102,8 +102,6 @@ def init_signal():
         events, source_time_series, raw = generate_signal(data_path, subject,
                                                           parcels=to_activate)
 
-    #raw.plot()
-
     visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
                     parcels_selected)
 
@@ -117,11 +115,7 @@ def init_signal():
     print(len(parcels_rh))
     print(len(parcels_lh))
 
-number_of_samples = 100
 
-import matplotlib.pylab as plt
+number_of_samples = 100
 for sample in range(number_of_samples):
     signal, parcels = init_signal()
-    plt.plot(signal)
-
-plt.show()

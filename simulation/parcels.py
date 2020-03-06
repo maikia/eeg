@@ -12,9 +12,9 @@ def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
                          hemi + ".aparc.a2009s.annot")
 
     labels = read_labels_from_annot(subject=subject,
-                                        annot_fname=aparc_file,
-                                        hemi=hemi,
-                                        subjects_dir=subjects_dir)
+                                    annot_fname=aparc_file,
+                                    hemi=hemi,
+                                    subjects_dir=subjects_dir)
 
     assert labels[-1].name[:7] == 'Unknown'  # corpus callosum
     return labels[-1]
@@ -39,9 +39,9 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
         xparcel = find_corpus_callosum(subject, subjects_dir, hemi=hemi)
         parcel = remove_overlapping(parcel, xparcel)
     write_labels_to_annot(parcel, subjects_dir=subjects_dir,
-                              subject=subject,
-                              annot_fname=path_annot,
-                              overwrite=True)
+                          subject=subject,
+                          annot_fname=path_annot,
+                          overwrite=True)
 
 
 def find_centers_of_mass(parcellation, subjects_dir):
