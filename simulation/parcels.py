@@ -1,8 +1,9 @@
 import numpy as np
 import os.path as op
 
-import mne
-from raw_signal import random_parcellation
+from mne import random_parcellation
+from mne import read_labels_from_annot
+from mne import write_labels_to_annot
 
 
 def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
@@ -10,7 +11,7 @@ def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
                          subject, "label",
                          hemi + ".aparc.a2009s.annot")
 
-    labels = mne.read_labels_from_annot(subject=subject,
+    labels = read_labels_from_annot(subject=subject,
                                         annot_fname=aparc_file,
                                         hemi=hemi,
                                         subjects_dir=subjects_dir)
@@ -37,12 +38,12 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
     if remove_corpus_callosum:
         xparcel = find_corpus_callosum(subject, subjects_dir, hemi=hemi)
         parcel = remove_overlapping(parcel, xparcel)
-    mne.write_labels_to_annot(parcel, subjects_dir=subjects_dir,
+    write_labels_to_annot(parcel, subjects_dir=subjects_dir,
                               subject=subject,
                               annot_fname=path_annot,
                               overwrite=True)
 
-
+plt.figure()
 def find_centers_of_mass(parcellation, subjects_dir):
     centers = np.zeros([len(parcellation)])
     # calculate center of mass for the labels

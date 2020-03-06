@@ -6,7 +6,7 @@ import mne
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.plot_signal import visualize_brain
-from simulation.raw_signal import make_random_parcellation
+from simulation.parcels import make_random_parcellation
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -18,7 +18,7 @@ def prepare_parcels():
 def init_signal():
     # same variables
     n = 100  # initial number of parcels (corpsu callosum will be excluded)
-    random_state = 0
+    random_state = 10
     hemi = 'both'
     subject = 'sample'
     recalculate_parcels = False  # initiate new random parcels
@@ -97,7 +97,7 @@ def init_signal():
         events, source_time_series, raw = generate_signal(data_path, subject,
                                                           parcels=to_activate)
 
-    raw.plot()
+    #raw.plot()
 
     visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
                     parcels_selected)
@@ -107,10 +107,17 @@ def init_signal():
 
     e_data = data[9:, :]
     get_data_at = 100
-    e_data[:, get_data_at]
+    return e_data[:, get_data_at], parcels_selected
     print(parcels_selected)
     print(len(parcels_rh))
     print(len(parcels_lh))
 
+number_of_samples = 100
 
-init_signal()
+import matplotlib.pylab as plt
+for sample in range(number_of_samples):
+    signal, parcels = init_signal()
+    plt.plot(signal)
+    print(len(parcels))
+
+plt.show()
