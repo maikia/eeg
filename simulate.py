@@ -2,6 +2,7 @@ import numpy as np
 import os.path as op
 import pandas as pd
 import random
+from scipy.sparse import csr_matrix
 
 import mne
 
@@ -71,7 +72,6 @@ def init_signal(parcels, cms, hemi):
     # randomly choose how many parcels will be activated, left or right
     # hemisphere and exact parcels
     if hemi == 'both':
-        import pdb; pdb.set_trace()
         parcels_lh, parcels_rh = parcels
         cm_lh, cm_rh = cms
     elif hemi == 'rh':
@@ -113,16 +113,16 @@ def init_signal(parcels, cms, hemi):
         events, source_time_series, raw = generate_signal(data_path, subject,
                                                           parcels=to_activate)
 
-    visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
-                    parcels_selected)
+    #visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
+    #                parcels_selected)
 
     # as the signal given give a single point at
     data = raw.get_data()  # 59 electrodes + 10 sti channels
 
     e_data = data[9:, :]
     get_data_at = 100
-
-    return e_data[:, get_data_at], parcels_selected
+    names_parcels_selected = [parcel.name for parcel in parcels_selected]
+    return e_data[:, get_data_at], names_parcels_selected
 
 
 # same variables
@@ -131,7 +131,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True  # initiate new random parcels
-number_of_samples = 3
+number_of_train = 10
+number_of_test = 5
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -143,13 +144,50 @@ parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi, n_parcels=n,
 data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
 signal_list = []
 target_list = []
-for sample in range(number_of_samples):
+for sample in range(number_of_train):
     signal, parcels_used = init_signal(parcels, cms, hemi)
     signal_list.append(signal)
     target_list.append(parcels_used)
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
+df['parcels'] = target_list
 
-data_labels = { data_labels[idx] : signal_list[:,idx] for idx in
-               range(len(data_labels)) }
+df.to_csv('data/train.csv', index=False)
+print(str(len(df)), ' train samples were saved')
+
+signal_list = []
+target_list = []
+for sample in range(number_of_test):
+    signal, parcels_used = init_signal(parcels, cms, hemi)
+    signal_list.append(signal)
+    target_list.append(parcels_used)
+
+signal_list = np.array(signal_list)
+df = pd.DataFrame(signal_list, columns=list(data_labels))
+df['parcels'] = target_list
+
+
+df.to_csv('data/test.csv', index=False)
+print(str(len(df)), ' test samples were saved')
+
+parcel_names = [item for sublist in parcels for item in sublist]
+parcel_names = [parcel.name for parcel in parcel_names]
+
+targets = []
+parcel_names = np.array(parcel_names)
+for idx, tar in enumerate(target_list):
+    row = np.zeros(len(parcel_names))
+    for t in tar:
+        row[np.where(parcel_names == t)[0][0]] = 1
+    targets.append(row)
+
+test_targets_sparse = csr_matrix(targets)
+
+
+
+# data to give to the participants:
+# labels with their names and vertices: parcels
+# ? centers of mass: cms
+# datapoints generated along with the target labels: df
+
