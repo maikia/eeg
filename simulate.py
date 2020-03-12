@@ -1,6 +1,7 @@
 import numpy as np
 import os.path as op
 import pandas as pd
+import pickle
 import random
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
@@ -144,8 +145,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = False  # initiate new random parcels
-number_of_train = 10
-number_of_test = 5
+number_of_train = 1000
+number_of_test = 200
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -153,9 +154,18 @@ subjects_dir = op.join(data_path, 'subjects')
 
 parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi, n_parcels=n,
                                recalculate_parcels=recalculate_parcels)
-parcel_names = [item for sublist in parcels for item in sublist]
-parcel_names = [parcel.name for parcel in parcel_names]
+parcels_flat = [item for sublist in parcels for item in sublist]
+parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
+
+# save label names with their corresponding vertices
+parcel_vertices = {}
+for parcel in parcels_flat:
+    parcel_vertices[parcel.name] = parcel.vertices
+
+with open('data/labels.pickle', 'wb') as outfile:
+    pickle.dump(parcel_vertices, outfile)
+outfile.close()
 
 data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
 
@@ -169,11 +179,10 @@ for sample in range(number_of_train):
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
-#df['parcels'] = target_list
 train_target = targets_to_sparse(target_list, parcel_names)
 
 df.to_csv('data/train.csv', index=False)
-save_npz('data/train_target.npz', sparse_matrix)
+save_npz('data/train_target.npz', train_target)
 print(str(len(df)), ' train samples were saved')
 
 # prepare test data
@@ -186,19 +195,16 @@ for sample in range(number_of_test):
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
-# df['parcels'] = target_list
 test_target = targets_to_sparse(target_list, parcel_names)
 
 df.to_csv('data/test.csv', index=False)
-save_npz('data/test_target.npz', sparse_matrix)
+save_npz('data/test_target.npz', test_target)
 print(str(len(df)), ' test samples were saved')
 
 
-
-
-
-
-
+# to read label names:
+# infile = open('data/labels.pickle','rb')
+# new_dict = pickle.load(infile)
 
 # data to give to the participants:
 # labels with their names and vertices: parcels
