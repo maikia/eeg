@@ -3,6 +3,7 @@ import os.path as op
 import pandas as pd
 import random
 from scipy.sparse import csr_matrix
+from scipy.sparse import save_npz
 
 import mne
 
@@ -125,12 +126,24 @@ def init_signal(parcels, cms, hemi):
     return e_data[:, get_data_at], names_parcels_selected
 
 
+def targets_to_sparse(target_list, parcel_names):
+    targets = []
+
+    for idx, tar in enumerate(target_list):
+        row = np.zeros(len(parcel_names))
+        for t in tar:
+            row[np.where(parcel_names == t)[0][0]] = 1
+        targets.append(row)
+    targets_sparse = csr_matrix(targets)
+    return targets_sparse
+
 # same variables
-n = 100  # initial number of parcels (corpsu callosum will be excluded)
+n = 100  # initial number of parcels (corpsu callosum will be excluded
+         # afterwards)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-recalculate_parcels = True  # initiate new random parcels
+recalculate_parcels = False  # initiate new random parcels
 number_of_train = 10
 number_of_test = 5
 
@@ -140,8 +153,13 @@ subjects_dir = op.join(data_path, 'subjects')
 
 parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi, n_parcels=n,
                                recalculate_parcels=recalculate_parcels)
+parcel_names = [item for sublist in parcels for item in sublist]
+parcel_names = [parcel.name for parcel in parcel_names]
+parcel_names = np.array(parcel_names)
 
 data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
+
+# prepare train data
 signal_list = []
 target_list = []
 for sample in range(number_of_train):
@@ -151,11 +169,14 @@ for sample in range(number_of_train):
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
-df['parcels'] = target_list
+#df['parcels'] = target_list
+train_target = targets_to_sparse(target_list, parcel_names)
 
 df.to_csv('data/train.csv', index=False)
+save_npz('data/train_target.npz', sparse_matrix)
 print(str(len(df)), ' train samples were saved')
 
+# prepare test data
 signal_list = []
 target_list = []
 for sample in range(number_of_test):
@@ -165,24 +186,17 @@ for sample in range(number_of_test):
 
 signal_list = np.array(signal_list)
 df = pd.DataFrame(signal_list, columns=list(data_labels))
-df['parcels'] = target_list
-
+# df['parcels'] = target_list
+test_target = targets_to_sparse(target_list, parcel_names)
 
 df.to_csv('data/test.csv', index=False)
+save_npz('data/test_target.npz', sparse_matrix)
 print(str(len(df)), ' test samples were saved')
 
-parcel_names = [item for sublist in parcels for item in sublist]
-parcel_names = [parcel.name for parcel in parcel_names]
 
-targets = []
-parcel_names = np.array(parcel_names)
-for idx, tar in enumerate(target_list):
-    row = np.zeros(len(parcel_names))
-    for t in tar:
-        row[np.where(parcel_names == t)[0][0]] = 1
-    targets.append(row)
 
-test_targets_sparse = csr_matrix(targets)
+
+
 
 
 
