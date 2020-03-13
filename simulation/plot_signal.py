@@ -1,6 +1,8 @@
 from surfer import Brain
 import mne
 
+from simulation.plot_signal import visualize_brain
+
 
 def plot_evoked(raw, events):
     # Plot evoked data to get another view of the simulated raw data.
