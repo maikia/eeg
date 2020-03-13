@@ -4,12 +4,12 @@ import numpy as np
 import mne
 
 
-def generate_signal(data_path, subject, parcels):
+def generate_signal(data_path, subject, parcels, n_events=30):
     signal_len = 10
     # Generate the signal
     # First, we get an info structure from the test subject.
     evoked_fname = op.join(data_path, 'MEG', subject,
-                           subject+'_audvis-ave.fif')
+                           subject + '_audvis-ave.fif')
     info = mne.io.read_info(evoked_fname)
     sel = mne.pick_types(info, meg=False, eeg=True, stim=True)
     info = mne.pick_info(info, sel)
@@ -18,7 +18,7 @@ def generate_signal(data_path, subject, parcels):
     # To simulate sources, we also need a source space. It can be obtained from
     # the forward solution of the sample subject.
     fwd_fname = op.join(data_path, 'MEG', subject,
-                        subject+'_audvis-meg-eeg-oct-6-fwd.fif')
+                        subject + '_audvis-meg-eeg-oct-6-fwd.fif')
     fwd = mne.read_forward_solution(fwd_fname)
     src = fwd['src']
 
@@ -27,15 +27,14 @@ def generate_signal(data_path, subject, parcels):
     # of 10 nAm.
     source_time_series = np.sin(2. * np.pi * 18. *
                                 np.arange(signal_len) * tstep
-                                ) * 10e-9
+                                ) * 50e-9
 
     # Define when the activity occurs using events. The first column is the
     # sample of the event, the second is not used, and the third is the event
     # id. Here the events occur every 200 samples.
-    n_events = 2
     events = np.zeros((n_events, 3))
     # Events sample
-    events[:, 0] = signal_len*len(parcels) + 200 * np.arange(n_events)
+    events[:, 0] = signal_len * len(parcels) + 200 * np.arange(n_events)
     events[:, 2] = 1  # All events have the sample id.
 
     # Create simulated source activity. Here we use a SourceSimulator whose
@@ -45,13 +44,13 @@ def generate_signal(data_path, subject, parcels):
     for idx, parcel in enumerate(parcels):
         # each signale will be shifted by 2 data point in each next parcel
         source_simulator.add_data(parcel,
-                                  source_time_series[2*idx:signal_len+5*idx],
+                                  source_time_series[2 * idx:signal_len + 5 * idx],
                                   events)
 
     # Project the source time series to sensor space and add some noise.
     # The source simulator can be given directly to the simulate_raw function.
     raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
     cov = mne.make_ad_hoc_cov(raw.info)
-    mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
+    # mne.simulation.add_noise(raw, cov)#, iir_filter=[0.2, -0.2, 0.02])
 
     return events, source_time_series, raw

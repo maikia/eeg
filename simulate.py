@@ -1,7 +1,7 @@
 import numpy as np
 import os.path as op
 import pandas as pd
-import pickle
+# import pickle
 import random
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
@@ -11,7 +11,7 @@ import mne
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
-from simulation.plot_signal import visualize_brain
+# from simulation.plot_signal import visualize_brain
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -115,6 +115,12 @@ def init_signal(parcels, cms, hemi):
         events, source_time_series, raw = generate_signal(data_path, subject,
                                                           parcels=to_activate)
 
+    # XXX : you overwrite raw for each parcel. Bug?
+    # XXX : you need to make epochs / evoked data to see somthing
+    # as raw data is way too noisy to see anything.
+    # XXX : then you need to pick a time point in the evoked where
+    # the sinusoid is strong so you see something.
+
     # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
     #                parcels_selected)
 
@@ -146,8 +152,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True  # initiate new random parcels
-number_of_train = 100
-number_of_test = 10
+number_of_train = 1
+number_of_test = 1
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -164,11 +170,11 @@ parcel_vertices = {}
 for parcel in parcels_flat:
     parcel_vertices[parcel.name] = parcel.vertices
 
-with open('data/labels.pickle', 'wb') as outfile:
-    pickle.dump(parcel_vertices, outfile)
-outfile.close()
+# with open('data/labels.pickle', 'wb') as outfile:
+#     pickle.dump(parcel_vertices, outfile)
+# outfile.close()
 
-data_labels = ['e'+str(idx+1) for idx in range(0, 59)]
+data_labels = ['e' + str(idx + 1) for idx in range(59)]
 
 # prepare train data
 signal_list = []
@@ -202,6 +208,11 @@ df.to_csv('data/test.csv', index=False)
 save_npz('data/test_target.npz', test_target)
 print(str(len(df)), ' test samples were saved')
 
+
+fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
+info = mne.read_evokeds(fname, condition=0).pick_types(meg=False, eeg=True).info
+evoked = mne.EvokedArray(df.values.T, info, tmin=0)
+evoked.plot_topomap()
 
 # to read label names:
 # infile = open('data/labels.pickle','rb')
