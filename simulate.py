@@ -10,14 +10,14 @@ import mne
 
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
-from simulation.plot_signal import visualize_brain
 from simulation.parcels import make_random_parcellation
+from simulation.plot_signal import visualize_brain
 
 # IMPORTANT: run it with ipython --gui=qt
 
 
 def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
-                    recalculate_parcels = True):
+                    recalculate_parcels=True):
     if ((hemi == 'both') or (hemi == 'lh')):
         random_annot_name_lh = 'lh.random' + str(n) + '.annot'
         random_annot_path_lh = op.join(subjects_dir, subject, 'label',
@@ -67,7 +67,7 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
     elif hemi == 'rh':
         return [parcels_rh], [cm_rh]
     elif hemi == 'lh':
-        return [parcel_lh], [cm_lh]
+        return [parcels_lh], [cm_lh]
 
 
 def init_signal(parcels, cms, hemi):
@@ -115,7 +115,7 @@ def init_signal(parcels, cms, hemi):
         events, source_time_series, raw = generate_signal(data_path, subject,
                                                           parcels=to_activate)
 
-    #visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
+    # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
     #                parcels_selected)
 
     # as the signal given give a single point at
@@ -138,13 +138,14 @@ def targets_to_sparse(target_list, parcel_names):
     targets_sparse = csr_matrix(targets)
     return targets_sparse
 
+
 # same variables
-n = 100  # initial number of parcels (corpsu callosum will be excluded
-         # afterwards)
+n = 100   # initial number of parcels (corpsu callosum will be excluded
+# afterwards)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-recalculate_parcels = False  # initiate new random parcels
+recalculate_parcels = True  # initiate new random parcels
 number_of_train = 100
 number_of_test = 10
 
@@ -210,4 +211,3 @@ print(str(len(df)), ' test samples were saved')
 # labels with their names and vertices: parcels
 # ? centers of mass: cms
 # datapoints generated along with the target labels: df
-
