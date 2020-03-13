@@ -145,8 +145,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = False  # initiate new random parcels
-number_of_train = 1000
-number_of_test = 200
+number_of_train = 100
+number_of_test = 10
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
