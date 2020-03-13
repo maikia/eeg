@@ -5,10 +5,6 @@ import scipy.sparse as sparse
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.linear_model import RidgeClassifierCV
 
-# Load the parcel names and the parcel indices
-infile = open(os.path.join('data', 'labels.pickle'), 'rb')
-labels = pickle.load(infile)
-infile.close()
 
 # Load the dataset using Pandas
 X_train = pd.read_csv(
