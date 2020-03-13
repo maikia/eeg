@@ -1,16 +1,12 @@
 import os
-import importlib
-import numpy as np
 import pandas as pd
 import pickle
-import matplotlib.pyplot as plt
 import scipy.sparse as sparse
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.linear_model import RidgeClassifierCV
 
 # Load the parcel names and the parcel indices
-infile = open(os.path.join('data', 'labels.pickle'),'rb')
+infile = open(os.path.join('data', 'labels.pickle'), 'rb')
 labels = pickle.load(infile)
 infile.close()
 
