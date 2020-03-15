@@ -1,12 +1,17 @@
-import numpy as np
 import os.path as op
+
+import numpy as np
 import pandas as pd
 # import pickle
-import random
+# import random
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
 
 import mne
+from mne.utils import check_random_state
+
+from joblib import Memory, Parallel, delayed
+from tqdm import tqdm
 
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
@@ -16,36 +21,38 @@ from simulation.parcels import make_random_parcellation
 # IMPORTANT: run it with ipython --gui=qt
 
 
-def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
-                    recalculate_parcels=True):
+mem = Memory('./')
+N_JOBS = -1
+# N_JOBS = 1
+
+make_random_parcellation = mem.cache(make_random_parcellation)
+
+
+@mem.cache
+def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
     if ((hemi == 'both') or (hemi == 'lh')):
-        random_annot_name_lh = 'lh.random' + str(n) + '.annot'
-        random_annot_path_lh = op.join(subjects_dir, subject, 'label',
-                                       random_annot_name_lh)
+        annot_fname_lh = 'lh.random' + str(n_parcels) + '.annot'
+        annot_fname_lh = op.join(subjects_dir, subject, 'label',
+                                 annot_fname_lh)
     if ((hemi == 'both') or (hemi == 'rh')):
-        random_annot_name_rh = 'rh.random' + str(n) + '.annot'
-        random_annot_path_rh = op.join(subjects_dir, subject, 'label',
-                                       random_annot_name_rh)
+        annot_fname_rh = 'rh.random' + str(n_parcels) + '.annot'
+        annot_fname_rh = op.join(subjects_dir, subject, 'label',
+                                 annot_fname_rh)
 
-    # check if the annotation already exists, if not create it
-    if (recalculate_parcels or not op.exists(random_annot_path_lh)) and \
-       ((hemi == 'both') or (hemi == 'lh')):
-        make_random_parcellation(random_annot_path_lh, n_parcels,
-                                 'lh', subjects_dir,
-                                 random_state, subject,
-                                 remove_corpus_callosum=True)
+    make_random_parcellation(annot_fname_lh, n_parcels,
+                             'lh', subjects_dir,
+                             random_state, subject,
+                             remove_corpus_callosum=True)
 
-    if (recalculate_parcels or not op.exists(random_annot_path_rh)) and \
-       ((hemi == 'both') or (hemi == 'rh')):
-        make_random_parcellation(random_annot_path_rh, n_parcels, 'rh',
-                                 subjects_dir,
-                                 random_state, subject,
-                                 remove_corpus_callosum=True)
+    make_random_parcellation(annot_fname_rh, n_parcels, 'rh',
+                             subjects_dir,
+                             random_state, subject,
+                             remove_corpus_callosum=True)
 
     # read the labels from annot
     if ((hemi == 'both') or (hemi == 'lh')):
         parcels_lh = mne.read_labels_from_annot(subject=subject,
-                                                annot_fname=random_annot_path_lh,
+                                                annot_fname=annot_fname_lh,
                                                 hemi='lh',
                                                 subjects_dir=subjects_dir)
         cm_lh = find_centers_of_mass(parcels_lh, subjects_dir)
@@ -54,7 +61,7 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
         parcels_lh = parcels_lh[:-1]
     if ((hemi == 'both') or (hemi == 'rh')):
         parcels_rh = mne.read_labels_from_annot(subject=subject,
-                                                annot_fname=random_annot_path_rh,
+                                                annot_fname=annot_fname_rh,
                                                 hemi='rh',
                                                 subjects_dir=subjects_dir)
         # remove the last, unknown label which is corpus callosum
@@ -70,9 +77,12 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels,
         return [parcels_lh], [cm_lh]
 
 
-def init_signal(parcels, cms, hemi):
+# @mem.cache
+def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None):
     # randomly choose how many parcels will be activated, left or right
     # hemisphere and exact parcels
+    rng = check_random_state(random_state)
+
     if hemi == 'both':
         parcels_lh, parcels_rh = parcels
         cm_lh, cm_rh = cms
@@ -83,17 +93,16 @@ def init_signal(parcels, cms, hemi):
         [parcels_lh] = parcels
         [cm_lh] = cms
 
-    n_parcels = random.randint(1, 3)
+    n_parcels = rng.randint(n_parcels_max, size=1)[0] + 1
     to_activate = []
     parcels_selected = []
+
     # do this so that the same label is not selected twice
-    deck_lh = list(range(0, len(parcels_lh)))
-    random.shuffle(deck_lh)
-    deck_rh = list(range(0, len(parcels_rh)))
-    random.shuffle(deck_rh)
+    deck_lh = list(rng.permutation(len(parcels_lh)))
+    deck_rh = list(rng.permutation(len(parcels_rh)))
     for idx in range(n_parcels):
         if hemi == 'both':
-            hemi_selected = random.choices(['lh', 'rh'], weights=[1, 1])[0]
+            hemi_selected = ['lh', 'rh'][rng.randint(2, size=1)[0]]
         else:
             hemi_selected = hemi
 
@@ -111,26 +120,18 @@ def init_signal(parcels, cms, hemi):
         parcels_selected.append(parcel_used)
 
     # activate selected parcels
+    data = 0.
     for idx in range(n_parcels):
-        events, source_time_series, raw = generate_signal(data_path, subject,
-                                                          parcels=to_activate)
-
-    # XXX : you overwrite raw for each parcel. Bug?
-    # XXX : you need to make epochs / evoked data to see somthing
-    # as raw data is way too noisy to see anything.
-    # XXX : then you need to pick a time point in the evoked where
-    # the sinusoid is strong so you see something.
+        events, _, raw = generate_signal(data_path, subject,
+                                         parcels=to_activate)
+        evoked = mne.Epochs(raw, events, tmax=0.3).average()
+        data = data + evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
 
     # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
     #                parcels_selected)
 
-    # as the signal given give a single point at
-    data = raw.get_data()  # 59 electrodes + 10 sti channels
-
-    e_data = data[9:, :]
-    get_data_at = 100
     names_parcels_selected = [parcel.name for parcel in parcels_selected]
-    return e_data[:, get_data_at], names_parcels_selected
+    return data, names_parcels_selected
 
 
 def targets_to_sparse(target_list, parcel_names):
@@ -146,21 +147,22 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n = 100   # initial number of parcels (corpsu callosum will be excluded
-# afterwards)
+n_parcels = 10  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True  # initiate new random parcels
-number_of_train = 1
-number_of_test = 1
+n_samples_train = 2000
+n_samples_test = 300
+n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
 subjects_dir = op.join(data_path, 'subjects')
 
-parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi, n_parcels=n,
-                               recalculate_parcels=recalculate_parcels)
+parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi,
+                               n_parcels=n_parcels,
+                               random_state=42)
 parcels_flat = [item for sublist in parcels for item in sublist]
 parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
@@ -170,53 +172,45 @@ parcel_vertices = {}
 for parcel in parcels_flat:
     parcel_vertices[parcel.name] = parcel.vertices
 
-# with open('data/labels.pickle', 'wb') as outfile:
-#     pickle.dump(parcel_vertices, outfile)
-# outfile.close()
-
-data_labels = ['e' + str(idx + 1) for idx in range(59)]
-
-# prepare train data
+# prepare train and test data
 signal_list = []
 target_list = []
-for sample in range(number_of_train):
-    signal, parcels_used = init_signal(parcels, cms, hemi)
-    signal_list.append(signal)
-    target_list.append(parcels_used)
+rng = np.random.RandomState(42)
+n_samples = n_samples_train + n_samples_test
+seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
+
+
+train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
+    delayed(init_signal)(parcels, cms, hemi, n_parcels_max, seed)
+    for seed in tqdm(seeds)
+)
+
+signal_list, target_list = zip(*train_data)
 
 signal_list = np.array(signal_list)
+data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
 df = pd.DataFrame(signal_list, columns=list(data_labels))
-train_target = targets_to_sparse(target_list, parcel_names)
+target = targets_to_sparse(target_list, parcel_names)
 
-df.to_csv('data/train.csv', index=False)
+df_train = df.iloc[:n_samples_train]
+train_target = target[:n_samples_train]
+
+df_test = df.iloc[n_samples_train:]
+test_target = target[n_samples_train:]
+
+df_train.to_csv('data/train.csv', index=False)
 save_npz('data/train_target.npz', train_target)
-print(str(len(df)), ' train samples were saved')
+print(str(len(df_train)), ' train samples were saved')
 
-# prepare test data
-signal_list = []
-target_list = []
-for sample in range(number_of_test):
-    signal, parcels_used = init_signal(parcels, cms, hemi)
-    signal_list.append(signal)
-    target_list.append(parcels_used)
-
-signal_list = np.array(signal_list)
-df = pd.DataFrame(signal_list, columns=list(data_labels))
-test_target = targets_to_sparse(target_list, parcel_names)
-
-df.to_csv('data/test.csv', index=False)
+df_test.to_csv('data/test.csv', index=False)
 save_npz('data/test_target.npz', test_target)
-print(str(len(df)), ' test samples were saved')
+print(str(len(df_test)), ' test samples were saved')
 
-
+# Visualize
 fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-info = mne.read_evokeds(fname, condition=0).pick_types(meg=False, eeg=True).info
+info = mne.read_evokeds(fname)[0].pick('eeg').info
 evoked = mne.EvokedArray(df.values.T, info, tmin=0)
 evoked.plot_topomap()
-
-# to read label names:
-# infile = open('data/labels.pickle','rb')
-# new_dict = pickle.load(infile)
 
 # data to give to the participants:
 # labels with their names and vertices: parcels
