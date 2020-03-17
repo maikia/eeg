@@ -78,7 +78,11 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
 
 
 # @mem.cache
-def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None):
+def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None,
+                source_at_cm=False):
+    '''
+    source_at_cm: the source will always be center of mass of the parcel
+    '''
     # randomly choose how many parcels will be activated, left or right
     # hemisphere and exact parcels
     rng = check_random_state(random_state)
@@ -108,15 +112,19 @@ def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None):
 
         if hemi_selected == 'lh':
             parcel_selected = deck_lh.pop()
-            l1_center_of_mass = parcels_lh[parcel_selected].copy()
-            l1_center_of_mass.vertices = [cm_lh[parcel_selected]]
+            l1_source = parcels_lh[parcel_selected].copy()
+            if source_at_cm:
+                l1_source.vertices = [cm_lh[parcel_selected]]
             parcel_used = parcels_lh[parcel_selected]
         elif hemi_selected == 'rh':
             parcel_selected = deck_rh.pop()
-            l1_center_of_mass = parcels_rh[parcel_selected].copy()
-            l1_center_of_mass.vertices = [cm_rh[parcel_selected]]
+            l1_source = parcels_rh[parcel_selected].copy()
+            if source_at_cm:
+                l1_source.vertices = [cm_rh[parcel_selected]]
             parcel_used = parcels_rh[parcel_selected]
-        to_activate.append(l1_center_of_mass)
+        if not source_at_cm:
+            l1_source.vertices = [rng.choice(parcel_used.vertices)]
+        to_activate.append(l1_source)
         parcels_selected.append(parcel_used)
 
     # activate selected parcels
@@ -131,7 +139,7 @@ def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None):
     #                parcels_selected)
 
     names_parcels_selected = [parcel.name for parcel in parcels_selected]
-    return data, names_parcels_selected
+    return data, names_parcels_selected, to_activate
 
 
 def targets_to_sparse(target_list, parcel_names):
@@ -147,14 +155,13 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 10  # number of parcels per hemisphere (without corpus callosum)
+n_parcels = 500  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-recalculate_parcels = True  # initiate new random parcels
-n_samples_train = 1000
-n_samples_test = 100
-n_parcels_max = 1
+n_samples_train = 10000
+n_samples_test = 2000
+n_parcels_max = 3
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -183,7 +190,8 @@ seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
 
 train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
-    delayed(init_signal)(parcels, cms, hemi, n_parcels_max, seed)
+    delayed(init_signal)(parcels, cms, hemi, n_parcels_max, seed,
+                         source_at_cm=False)
     for seed in tqdm(seeds)
 )
 
