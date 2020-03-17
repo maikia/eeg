@@ -1,4 +1,5 @@
 import os.path as op
+import os
 
 import numpy as np
 import pandas as pd
@@ -152,8 +153,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True  # initiate new random parcels
-n_samples_train = 2000
-n_samples_test = 300
+n_samples_train = 20
+n_samples_test = 3
 n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -197,6 +198,9 @@ train_target = target[:n_samples_train]
 
 df_test = df.iloc[n_samples_train:]
 test_target = target[n_samples_train:]
+
+if not os.path.isdir('data/'):
+    os.mkdir('data/')
 
 df_train.to_csv('data/train.csv', index=False)
 save_npz('data/train_target.npz', train_target)
