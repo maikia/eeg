@@ -155,7 +155,7 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 500  # number of parcels per hemisphere (without corpus callosum)
+n_parcels = 100  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
@@ -195,7 +195,7 @@ train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
     for seed in tqdm(seeds)
 )
 
-signal_list, target_list = zip(*train_data)
+signal_list, target_list, activated = zip(*train_data)
 
 signal_list = np.array(signal_list)
 data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
