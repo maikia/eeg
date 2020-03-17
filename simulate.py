@@ -1,4 +1,3 @@
-import os.path as op
 import os
 
 import numpy as np
@@ -33,11 +32,11 @@ make_random_parcellation = mem.cache(make_random_parcellation)
 def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
     if ((hemi == 'both') or (hemi == 'lh')):
         annot_fname_lh = 'lh.random' + str(n_parcels) + '.annot'
-        annot_fname_lh = op.join(subjects_dir, subject, 'label',
+        annot_fname_lh = os.path.join(subjects_dir, subject, 'label',
                                  annot_fname_lh)
     if ((hemi == 'both') or (hemi == 'rh')):
         annot_fname_rh = 'rh.random' + str(n_parcels) + '.annot'
-        annot_fname_rh = op.join(subjects_dir, subject, 'label',
+        annot_fname_rh = os.path.join(subjects_dir, subject, 'label',
                                  annot_fname_rh)
 
     make_random_parcellation(annot_fname_lh, n_parcels,
@@ -159,7 +158,7 @@ n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
-subjects_dir = op.join(data_path, 'subjects')
+subjects_dir = os.path.join(data_path, 'subjects')
 
 parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi,
                                n_parcels=n_parcels,
@@ -199,15 +198,16 @@ train_target = target[:n_samples_train]
 df_test = df.iloc[n_samples_train:]
 test_target = target[n_samples_train:]
 
-if not os.path.isdir('data/'):
-    os.mkdir('data/')
+data_dir_specific = 'data_' + str(n_parcels)
+if not os.path.isdir(data_dir_specific):
+    os.mkdir(data_dir_specific)
 
-df_train.to_csv('data/train.csv', index=False)
-save_npz('data/train_target.npz', train_target)
+df_train.to_csv(os.path.join(data_dir_specific, 'train.csv'), index=False)
+save_npz(os.path.join(data_dir_specific, 'train_target.npz'), train_target)
 print(str(len(df_train)), ' train samples were saved')
 
-df_test.to_csv('data/test.csv', index=False)
-save_npz('data/test_target.npz', test_target)
+df_test.to_csv(os.path.join(data_dir_specific,'test.csv'), index=False)
+save_npz(os.path.join(data_dir_specific, 'test_target.npz'), test_target)
 print(str(len(df_test)), ' test samples were saved')
 
 # Visualize
