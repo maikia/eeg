@@ -2,7 +2,7 @@ import os
 
 import numpy as np
 import pandas as pd
-# import pickle
+import pickle
 # import random
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
@@ -152,8 +152,8 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 recalculate_parcels = True  # initiate new random parcels
-n_samples_train = 20
-n_samples_test = 3
+n_samples_train = 1000
+n_samples_test = 100
 n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -172,6 +172,7 @@ len_parcels_flat = len(parcels_flat)
 parcel_vertices = {}
 for parcel in parcels_flat:
     parcel_vertices[parcel.name] = parcel.vertices
+
 
 # prepare train and test data
 signal_list = []
@@ -202,6 +203,10 @@ test_target = target[n_samples_train:]
 data_dir_specific = 'data_' + str(len_parcels_flat)
 if not os.path.isdir(data_dir_specific):
     os.mkdir(data_dir_specific)
+
+with open(os.path.join(data_dir_specific, 'labels.pickle'), 'wb') as outfile:
+    pickle.dump(parcel_vertices, outfile)
+outfile.close()
 
 df_train.to_csv(os.path.join(data_dir_specific, 'train.csv'), index=False)
 save_npz(os.path.join(data_dir_specific, 'train_target.npz'), train_target)
