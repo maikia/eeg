@@ -129,11 +129,10 @@ def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None,
 
     # activate selected parcels
     data = 0.
-    for idx in range(n_parcels):
-        events, _, raw = generate_signal(data_path, subject,
+    events, _, raw = generate_signal(data_path, subject,
                                          parcels=to_activate)
-        evoked = mne.Epochs(raw, events, tmax=0.3).average()
-        data = data + evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
+    evoked = mne.Epochs(raw, events, tmax=0.3).average()
+    data = data + evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
 
     # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
     #                parcels_selected)
@@ -155,11 +154,11 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 4  # number of parcels per hemisphere (without corpus callosum)
+n_parcels = 10  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 100
+n_samples_train = 10
 n_samples_test = 2
 n_parcels_max = 3
 
