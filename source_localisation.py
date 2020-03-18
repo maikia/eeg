@@ -90,8 +90,20 @@ y_train = sparse.load_npz(os.path.join(data_dir,
 X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
 y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
 
+import pickle
+with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
+    #ickle.dump(parcel_vertices, outfile)
+    labels = pickle.load(outfile)
+
+parcel_indices = []
+for v in labels.values():
+    parcel_indices.append(list(v))
+
+parcel_indices = [item for sublist in parcel_indices for item in sublist]
+
 x = X_train.iloc[[0]]
 pd.DataFrame(L.T @ x.T).groupby(parcel_indices).argmax()
+
 # look for the parcel that has the source with the highest correlation with
 # the data
 
