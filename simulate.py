@@ -130,6 +130,7 @@ def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None,
     # activate selected parcels
     events, _, raw = generate_signal(data_path, subject,
                                      parcels=to_activate)
+
     evoked = mne.Epochs(raw, events, tmax=0.3).average()
     data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
     # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
@@ -238,6 +239,9 @@ fwd_fname = os.path.join(data_path, 'MEG', subject,
 fwd = mne.read_forward_solution(fwd_fname)
 
 lead_field = fwd['sol']['data']
-picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True)
+
+# TODO: if bad channels are excluded then one of the channels will be excluded
+# check why there is one bad channel and if it should/not be excluded
+picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
 lead_field = lead_field[picks_eeg, :]
-np.savez(os.path.join(data_dir_specific, 'lead_field.npz'), lead_matrix)
+np.savez(os.path.join(data_dir_specific, 'lead_field.npz'), lead_field)
