@@ -22,8 +22,8 @@ from simulation.parcels import make_random_parcellation
 
 
 mem = Memory('./')
-N_JOBS = -1
-# N_JOBS = 1
+# N_JOBS = -1
+N_JOBS = 1
 
 make_random_parcellation = mem.cache(make_random_parcellation)
 
@@ -155,12 +155,12 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 100  # number of parcels per hemisphere (without corpus callosum)
+n_parcels = 4  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 10000
-n_samples_test = 2000
+n_samples_train = 100
+n_samples_test = 2
 n_parcels_max = 3
 
 # Here we are creating the directories/files for left and right hemisphere

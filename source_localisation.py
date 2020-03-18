@@ -59,7 +59,7 @@ for data_dir in os.listdir('.'):
         X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
         y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
 
-        for no_samples in data_samples[data_samples < len(X_train)]:
+        for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
             no_samples_test = int(no_samples * 0.2)
             multi_target_ridge.fit(X_train.head(no_samples),
                                    y_train[:no_samples])
