@@ -230,4 +230,14 @@ evoked.plot_topomap()
 # data to give to the participants:
 # labels with their names and vertices: parcels
 # ? centers of mass: cms
-# datapoints generated along with the target labels: df
+
+
+# reading forward matrix and saving
+fwd_fname = os.path.join(data_path, 'MEG', subject,
+                    subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+fwd = mne.read_forward_solution(fwd_fname)
+
+lead_field = fwd['sol']['data']
+picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True)
+lead_field = lead_field[picks_eeg, :]
+np.savez(os.path.join(data_dir_specific, 'lead_field.npz'), lead_matrix)
