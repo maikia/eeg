@@ -45,6 +45,7 @@ multi_target_ridge = MultiOutputClassifier(clf, n_jobs=-1)
 data_samples = np.logspace(1,4,num=10,base=10,dtype='int')
 
 # check for all the data directories
+'''
 import glob
 scores_all = {}
 for data_dir in os.listdir('.'):
@@ -77,6 +78,21 @@ plt.legend()
 plt.xlabel('number of samples used')
 plt.ylabel('score (on Kneighours)')
 plt.savefig('score.png')
+'''
 
+data_dir = 'data_15'
+L = np.load(os.path.join(data_dir, 'lead_field.npz'))
+L = L['arr_0']
+
+X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
+y_train = sparse.load_npz(os.path.join(data_dir,
+                                            'train_target.npz')).toarray()
+X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
+y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
+
+x = X_train.iloc[[0]]
+pd.DataFrame(L.T @ x.T).groupby(parcel_indices).argmax()
+# look for the parcel that has the source with the highest correlation with
+# the data
 
 
