@@ -128,12 +128,10 @@ def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None,
         parcels_selected.append(parcel_used)
 
     # activate selected parcels
-    data = 0.
     events, _, raw = generate_signal(data_path, subject,
-                                         parcels=to_activate)
+                                     parcels=to_activate)
     evoked = mne.Epochs(raw, events, tmax=0.3).average()
-    data = data + evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
-
+    data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
     # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
     #                parcels_selected)
 
