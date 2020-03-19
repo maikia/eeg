@@ -22,6 +22,12 @@ class LeadCorrelate(BaseEstimator):
     def fit(self, X, y):
         """ dummy
         """
+        # calculate the likelihood to have a number of parcels
+        true_per_row = np.sum(y, 1).astype(int)
+        self.n_sources = np.unique(true_per_row)
+        occurences = np.bincount(true_per_row)[1:]
+        self.prob_of_occurence = occurences / sum(occurences)
+
         self.is_fitted_ = True
         # `fit` should always return `self`
         return self
@@ -39,6 +45,7 @@ class LeadCorrelate(BaseEstimator):
         """
         # X = check_array(X, accept_sparse=False)
         check_is_fitted(self, 'is_fitted_')
+        # TODO: add option for more than one parcel as prediction
         y = np.zeros(X.shape[0])
         for idx in range(0, len(X)):
             x = X.iloc[[idx]]
@@ -64,6 +71,7 @@ class LeadCorrelate(BaseEstimator):
         score : float
             Mean accuracy of self.predict(X) wrt. y.
         """
+        # TODO: need to change it to accept the matrix of 0s and 1s
         y_pred = self.predict(X)
         final_score = sum(np.equal(y_pred, y)) / len(y_pred)
         return final_score
