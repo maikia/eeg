@@ -135,6 +135,7 @@ assert len(parcel_indices_leadfield) == L.shape[1]
 
 lc = LeadCorrelate(L, parcel_indices_leadfield)
 lc.fit(X_train, y_train)
+
 y_pred = lc.predict(X_train)
 y_pred2 = lc.predict(X_test)
 

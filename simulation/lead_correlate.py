@@ -25,8 +25,9 @@ class LeadCorrelate(BaseEstimator):
         # calculate the likelihood to have a number of parcels
         true_per_row = np.sum(y, 1).astype(int)
         self.n_sources = np.unique(true_per_row)
-        occurences = np.bincount(true_per_row)[1:]
-        self.prob_of_occurence = occurences / sum(occurences)
+        self.all_sources = np.size(y, 1)
+        #occurences = np.bincount(true_per_row)[1:]
+        #self.prob_of_occurence = occurences / sum(occurences)
 
         self.is_fitted_ = True
         # `fit` should always return `self`
@@ -45,14 +46,29 @@ class LeadCorrelate(BaseEstimator):
         """
         # X = check_array(X, accept_sparse=False)
         check_is_fitted(self, 'is_fitted_')
-        # TODO: add option for more than one parcel as prediction
-        y = np.zeros(X.shape[0])
+
+        y_pred = np.zeros([X.shape[0], self.all_sources])
         for idx in range(0, len(X)):
             x = X.iloc[[idx]]
-            y_pred = pd.DataFrame(self.L.T @ x.T).groupby(self.parcel_indices).max().idxmax().values[0]
+            likelihood = pd.DataFrame(self.L.T @ x.T).groupby(
+                                            self.parcel_indices).max()
+            # consider only n max correlated sources where n is highest number
+            # of sources calculated in fit()
+            if self.n_sources[-1] == 1:
+                y = likelihood.idxmax().values[0]
+            else:
+                diffs = np.diff(likelihood.nlargest(3, [idx]).values[:,0])
+                try:
+                    # setting arbitrary threshold
+                    cut_at = np.where(diffs < -0.00025)[0][0]
+                    y = np.array(likelihood.nlargest(cut_at + 1, [idx]).index)
+                except:
+                    # take max possible parcels
+                    y = np.array(likelihood.nlargest(self.n_sources[-1],
+                                                     [idx]).index)
 
-            y[idx] = y_pred
-        return y
+            y_pred[idx, y-1] = 1
+        return y_pred
 
     def score(self, X, y):
         """
@@ -71,7 +87,7 @@ class LeadCorrelate(BaseEstimator):
         score : float
             Mean accuracy of self.predict(X) wrt. y.
         """
-        # TODO: need to change it to accept the matrix of 0s and 1s
+        # TODO: need to change it so two matrices with 0s and 1s are comared
         y_pred = self.predict(X)
         final_score = sum(np.equal(y_pred, y)) / len(y_pred)
         return final_score
