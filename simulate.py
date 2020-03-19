@@ -23,7 +23,7 @@ from simulation.parcels import make_random_parcellation
 
 mem = Memory('./')
 # N_JOBS = -1
-N_JOBS = 1
+N_JOBS = -1
 
 make_random_parcellation = mem.cache(make_random_parcellation)
 
@@ -157,9 +157,9 @@ n_parcels = 10  # number of parcels per hemisphere (without corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 10
-n_samples_test = 2
-n_parcels_max = 3
+n_samples_train = 1000
+n_samples_test = 300
+n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -235,9 +235,9 @@ evoked.plot_topomap()
 
 # reading forward matrix and saving
 fwd_fname = os.path.join(data_path, 'MEG', subject,
-                    subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+                         subject + '_audvis-meg-eeg-oct-6-fwd.fif')
 fwd = mne.read_forward_solution(fwd_fname)
-
+fwd = mne.convert_forward_solution(fwd, force_fixed=True)
 lead_field = fwd['sol']['data']
 
 # TODO: if bad channels are excluded then one of the channels will be excluded

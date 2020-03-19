@@ -34,15 +34,15 @@ if 0:
     plt.show()
 
 clf = KNeighborsClassifier(3)
-multi_target_ridge = MultiOutputClassifier(clf, n_jobs=-1)
-# multi_target_ridge.fit(X_train, y_train)
+model = MultiOutputClassifier(clf, n_jobs=-1)
+# model.fit(X_train, y_train)
 
 ## Load test data
 # X_test = pd.read_csv(os.path.join('data', 'test.csv'))
 # y_test = sparse.load_npz(os.path.join('data', 'test_target.npz')).toarray()
-# print(multi_target_ridge.score(X_test, y_test))
+# print(model.score(X_test, y_test))
 
-data_samples = np.logspace(1,4,num=10,base=10,dtype='int')
+data_samples = np.logspace(1, 4, num=10, base=10, dtype='int')
 
 # check for all the data directories
 '''
@@ -62,9 +62,9 @@ for data_dir in os.listdir('.'):
 
         for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
             no_samples_test = int(no_samples * 0.2)
-            multi_target_ridge.fit(X_train.head(no_samples),
+            model.fit(X_train.head(no_samples),
                                    y_train[:no_samples])
-            score = multi_target_ridge.score(X_test.head(no_samples_test),
+            score = model.score(X_test.head(no_samples_test),
                                              y_test[:no_samples_test])
             scores.append(score)
         scores_all[str(no_parcels)] = scores
@@ -95,14 +95,45 @@ with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
     #ickle.dump(parcel_vertices, outfile)
     labels = pickle.load(outfile)
 
-parcel_indices = []
-for v in labels.values():
-    parcel_indices.append(list(v))
+# reading forward matrix and saving
+import mne
+data_path = mne.datasets.sample.data_path()
+subject = 'sample'
+fwd_fname = os.path.join(data_path, 'MEG', subject,
+                         subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+fwd = mne.read_forward_solution(fwd_fname)
+fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+lead_field = fwd['sol']['data']
 
-parcel_indices = [item for sublist in parcel_indices for item in sublist]
+# now we make a vector of size n_vertices for each surface of cortex
+# hemisphere and put a int for each vertex that says it which label
+# it belongs to.
+parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
+parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
+for label_name, label_idx in labels.items():
+    label_id = int(label_name[6:-3])
+    if '-lh' in label_name:
+        parcel_indices_lh[label_idx] = label_id
+    else:
+        parcel_indices_rh[label_idx] = label_id
 
+# Make sure label numbers different for each hemisphere
+parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
+parcel_indices = np.concatenate((parcel_indices_lh,
+                                 parcel_indices_rh), axis=0)
+
+# Now pick vertices that are actually used in the forward
+inuse = np.concatenate((fwd['src'][0]['inuse'],
+                        fwd['src'][1]['inuse']), axis=0)
+
+parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
+
+assert len(parcel_indices_leadfield) == L.shape[1]
+
+# take one sample and look at the column of L that is the most
+# correlated with it. The predict the label idx of the max column.
 x = X_train.iloc[[0]]
-pd.DataFrame(L.T @ x.T).groupby(parcel_indices).argmax()
+y_pred = pd.DataFrame(L.T @ x.T).groupby(parcel_indices_leadfield).max().idxmax()[0]
 
 # look for the parcel that has the source with the highest correlation with
 # the data
