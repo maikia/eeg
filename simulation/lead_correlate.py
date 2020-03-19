@@ -5,7 +5,6 @@ from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 from sklearn.utils.multiclass import unique_labels
 from sklearn.metrics import euclidean_distances
 
-
 class LeadCorrelate(BaseEstimator):
     """ A template estimator to be used as a reference implementation.
     For more information regarding how to build your own estimator, read more
@@ -85,9 +84,10 @@ class LeadCorrelate(BaseEstimator):
         Returns
         -------
         score : float
-            Mean accuracy of self.predict(X) wrt. y.
+            average number of errors per sample (the more the worse)
         """
-        # TODO: need to change it so two matrices with 0s and 1s are comared
         y_pred = self.predict(X)
-        final_score = sum(np.equal(y_pred, y)) / len(y_pred)
-        return final_score
+        errors = np.abs(y_pred-y)
+        score = np.sum(errors)/len(y)
+
+        return score
