@@ -92,7 +92,7 @@ y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
 
 import pickle
 with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
-    #ickle.dump(parcel_vertices, outfile)
+    #pickle.dump(parcel_vertices, outfile)
     labels = pickle.load(outfile)
 
 # reading forward matrix and saving
@@ -111,14 +111,14 @@ lead_field = fwd['sol']['data']
 parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
 parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
 for label_name, label_idx in labels.items():
-    label_id = int(label_name[6:-3])
+    label_id = int(label_name[:-3])
     if '-lh' in label_name:
         parcel_indices_lh[label_idx] = label_id
     else:
         parcel_indices_rh[label_idx] = label_id
 
 # Make sure label numbers different for each hemisphere
-parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
+#parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
 parcel_indices = np.concatenate((parcel_indices_lh,
                                  parcel_indices_rh), axis=0)
 
@@ -132,8 +132,19 @@ assert len(parcel_indices_leadfield) == L.shape[1]
 
 # take one sample and look at the column of L that is the most
 # correlated with it. The predict the label idx of the max column.
-x = X_train.iloc[[0]]
-y_pred = pd.DataFrame(L.T @ x.T).groupby(parcel_indices_leadfield).max().idxmax()[0]
+score = 0
+for idx in range(0, len(X_train)): #enumerate(X_train.iterrows()):
+    x = X_train.iloc[[idx]]
+    y_pred = pd.DataFrame(L.T @ x.T).groupby(parcel_indices_leadfield).max().idxmax().values[0]
+    y_true = np.where(y_train[idx])[0][0] + 1
+    print('True: %d : Pred %d' %(y_true, y_pred))
+
+    if y_pred == y_true:
+        # predicted correctly
+        score += 1
+
+final_score = score/(idx+1)
+print('Score: %f ' %final_score)
 
 # look for the parcel that has the source with the highest correlation with
 # the data
