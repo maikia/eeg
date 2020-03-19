@@ -65,7 +65,5 @@ class LeadCorrelate(BaseEstimator):
             Mean accuracy of self.predict(X) wrt. y.
         """
         y_pred = self.predict(X)
-        np.equal(y_pred, y)
-        y_true = np.where(y_train[idx])[0][0] + 1
-        final_score = sum(np.equal(y_pred, y))/len(y_pred)
+        final_score = sum(np.equal(y_pred, y)) / len(y_pred)
         return final_score
