@@ -105,6 +105,8 @@ fwd = mne.read_forward_solution(fwd_fname)
 fwd = mne.convert_forward_solution(fwd, force_fixed=True)
 lead_field = fwd['sol']['data']
 
+
+from simulation.lead_correlate import LeadCorrelate
 # now we make a vector of size n_vertices for each surface of cortex
 # hemisphere and put a int for each vertex that says it which label
 # it belongs to.
@@ -116,6 +118,7 @@ for label_name, label_idx in labels.items():
         parcel_indices_lh[label_idx] = label_id
     else:
         parcel_indices_rh[label_idx] = label_id
+
 
 # Make sure label numbers different for each hemisphere
 #parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
@@ -130,21 +133,14 @@ parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
 
 assert len(parcel_indices_leadfield) == L.shape[1]
 
+lc = LeadCorrelate(L, parcel_indices_leadfield)
+lc.fit(X_train, y_train)
+y_pred = lc.predict(X_train)
+y_pred2 = lc.predict(X_test)
+
 # take one sample and look at the column of L that is the most
 # correlated with it. The predict the label idx of the max column.
-score = 0
-for idx in range(0, len(X_train)): #enumerate(X_train.iterrows()):
-    x = X_train.iloc[[idx]]
-    y_pred = pd.DataFrame(L.T @ x.T).groupby(parcel_indices_leadfield).max().idxmax().values[0]
-    y_true = np.where(y_train[idx])[0][0] + 1
-    print('True: %d : Pred %d' %(y_true, y_pred))
 
-    if y_pred == y_true:
-        # predicted correctly
-        score += 1
-
-final_score = score/(idx+1)
-print('Score: %f ' %final_score)
 
 # look for the parcel that has the source with the highest correlation with
 # the data
