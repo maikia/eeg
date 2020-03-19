@@ -153,7 +153,8 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 10  # number of parcels per hemisphere (without corpus callosum)
+n_parcels = 10  # number of parcels per hemisphere
+# (will be reduced by corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
@@ -174,10 +175,12 @@ parcel_names = np.array(parcel_names)
 
 len_parcels_flat = len(parcels_flat)
 # save label names with their corresponding vertices
+idx = 1
 parcel_vertices = {}
 for parcel in parcels_flat:
-    parcel_vertices[parcel.name] = parcel.vertices
-
+    parcel_name = str(idx) + parcel.name[-3:]
+    parcel_vertices[parcel_name] = parcel.vertices
+    idx += 1
 
 # prepare train and test data
 signal_list = []
@@ -240,8 +243,6 @@ fwd = mne.read_forward_solution(fwd_fname)
 fwd = mne.convert_forward_solution(fwd, force_fixed=True)
 lead_field = fwd['sol']['data']
 
-# TODO: if bad channels are excluded then one of the channels will be excluded
-# check why there is one bad channel and if it should/not be excluded
 picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
 lead_field = lead_field[picks_eeg, :]
 np.savez(os.path.join(data_dir_specific, 'lead_field.npz'), lead_field)
