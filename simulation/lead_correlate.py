@@ -45,14 +45,27 @@ class LeadCorrelate(BaseEstimator):
             y_pred = pd.DataFrame(self.L.T @ x.T).groupby(self.parcel_indices).max().idxmax().values[0]
 
             y[idx] = y_pred
-
         return y
 
-    def score(self):
-        # TODO:
-        if y_pred == y_true:
-            # predicted correctly
-            score += 1
+    def score(self, X, y):
+        """
+        Return the accuracy on the given test data and labels.
+        In multi-label classification, this is the subset accuracy
+        which is a harsh metric since you require for each sample that
+        each label set be correctly predicted.
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples.
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True labels for X.
+        Returns
+        -------
+        score : float
+            Mean accuracy of self.predict(X) wrt. y.
+        """
+        y_pred = self.predict(X)
+        np.equal(y_pred, y)
         y_true = np.where(y_train[idx])[0][0] + 1
-        final_score = score/(idx+1)
+        final_score = sum(np.equal(y_pred, y))/len(y_pred)
         return final_score

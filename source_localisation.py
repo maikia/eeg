@@ -138,6 +138,11 @@ lc.fit(X_train, y_train)
 y_pred = lc.predict(X_train)
 y_pred2 = lc.predict(X_test)
 
+y_train_idx = np.argmax(y_train, 1) + 1
+y_test_idx = np.argmax(y_test, 1) + 1
+score_test = lc.score(X_test, y_test_idx)
+score_train = lc.score(X_train, y_train_idx)
+
 # take one sample and look at the column of L that is the most
 # correlated with it. The predict the label idx of the max column.
 
