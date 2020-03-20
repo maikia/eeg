@@ -29,6 +29,8 @@ class LeadCorrelate(BaseEstimator):
         #self.prob_of_occurence = occurences / sum(occurences)
 
         self.is_fitted_ = True
+        self.computeFROC(X, y)
+        self.threshold = 0
         # `fit` should always return `self`
         return self
 
@@ -56,10 +58,10 @@ class LeadCorrelate(BaseEstimator):
             if self.n_sources[-1] == 1:
                 y = likelihood.idxmax().values[0]
             else:
-                diffs = np.diff(likelihood.nlargest(3, [idx]).values[:,0])
+                diffs = np.diff(likelihood.nlargest(self.n_sources[-1], [idx]).values[:,0])
                 try:
                     # setting arbitrary threshold
-                    cut_at = np.where(diffs < -0.00025)[0][0]
+                    cut_at = np.where(diffs < self.threshold)[0][0] #-0.00025
                     y = np.array(likelihood.nlargest(cut_at + 1, [idx]).index)
                 except:
                     # take max possible parcels
@@ -88,6 +90,62 @@ class LeadCorrelate(BaseEstimator):
         """
         y_pred = self.predict(X)
         errors = np.abs(y_pred-y)
-        score = np.sum(errors)/len(y)
+        score = np.sum(errors)/len(y)/self.n_sources[-1]
 
         return score
+
+
+    def computeFROC(self, X, y):
+        """Generates the data required for plotting the FROC curve
+
+        Args:
+            X: data
+            y: true classified
+        Returns:
+            total_FPs:      A list containing the average number of false positives
+            per image for different thresholds
+
+            total_sensitivity:  A list containig overall sensitivity of the system
+            for different thresholds
+        """
+        # LL ≡ lesion localization, i.e., a (1)
+        # lesion marked to within an agreed upon accuracy.
+        # NL ≡ non-lesion localization, i.e., the mark is not close to any
+        # lesion.
+        # LLF ≡ lesion localization fraction ≡ # LL divided by total number of
+        # lesions (0 ≤ LLF ≤ 1).
+        # NLF ≡ non-lesion localization fraction ≡ # NL divided by total number
+        # of images (0 ≤ NLF); note the lack of an upper bound
+        thresholds = np.linspace(-0.1, -0.000001, 15)
+        total_sensitivity = []
+        total_false_positives = []
+        for thres in thresholds:  # -0.00025)
+            self.threshold = thres
+            y_pred = self.predict(X)
+            unique, counts = np.unique(y - y_pred, return_counts=True)
+            total_FPs = counts[np.where(unique == -1)][0]
+            total_TN = counts[np.where(unique == 1)][0]
+            unique, counts = np.unique(y + y_pred, return_counts=True)
+            total_TP = counts[np.where(unique == 2)][0]
+
+            sensitivity = total_TP / np.sum(y)
+            false_positives = total_FPs / len(y)
+            total_sensitivity.append(sensitivity)
+            total_false_positives.append(false_positives)
+        self.total_FPs = total_false_positives
+        self.total_sensitivity = total_sensitivity
+
+        self.thresholds = thresholds
+        return  total_false_positives, total_sensitivity, thresholds
+
+
+    def plotFROC(self):
+        """Plots the FROC curve
+        """
+        import matplotlib.pylab as plt
+        fig = plt.figure()
+        #fig.suptitle('Free response receiver operating characteristic curve', fontsize=12)
+        plt.plot(self.total_FPs, self.total_sensitivity, color='#000000')
+        plt.xlabel('total false positives', fontsize=12)
+        plt.ylabel('total sensitivity', fontsize=12)
+        plt.title('FROC, max parcels: ' + str(self.n_sources[-1]))

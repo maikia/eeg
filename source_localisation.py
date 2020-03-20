@@ -1,11 +1,14 @@
 import os
 import numpy as np
 import pandas as pd
+import pickle
 import matplotlib.pyplot as plt
 
 from scipy import sparse
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neighbors import KNeighborsClassifier
+
+from simulation.lead_correlate import LeadCorrelate
 
 
 # Load train data
@@ -80,75 +83,82 @@ plt.ylabel('score (on Kneighours)')
 plt.savefig('score.png')
 '''
 
-data_dir = 'data_15'
-L = np.load(os.path.join(data_dir, 'lead_field.npz'))
-L = L['arr_0']
+y_test_score = []
+y_train_score = []
+max_parcels_all = []
+for data_dir in os.listdir('.'):
+    if 'data_15' in data_dir:
+        max_parcels = data_dir[8:]
+        L = np.load(os.path.join(data_dir, 'lead_field.npz'))
+        L = L['arr_0']
 
-X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
-y_train = sparse.load_npz(os.path.join(data_dir,
-                                            'train_target.npz')).toarray()
-X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
-y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
+        X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
+        y_train = sparse.load_npz(os.path.join(data_dir,
+                                                    'train_target.npz')).toarray()
+        X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
+        y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
 
-import pickle
-with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
-    #pickle.dump(parcel_vertices, outfile)
-    labels = pickle.load(outfile)
+        with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
+            #pickle.dump(parcel_vertices, outfile)
+            labels = pickle.load(outfile)
 
-# reading forward matrix and saving
-import mne
-data_path = mne.datasets.sample.data_path()
-subject = 'sample'
-fwd_fname = os.path.join(data_path, 'MEG', subject,
-                         subject + '_audvis-meg-eeg-oct-6-fwd.fif')
-fwd = mne.read_forward_solution(fwd_fname)
-fwd = mne.convert_forward_solution(fwd, force_fixed=True)
-lead_field = fwd['sol']['data']
+        # reading forward matrix and saving
+        import mne
+        data_path = mne.datasets.sample.data_path()
+        subject = 'sample'
+        fwd_fname = os.path.join(data_path, 'MEG', subject,
+                                subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+        fwd = mne.read_forward_solution(fwd_fname)
+        fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+        lead_field = fwd['sol']['data']
 
-
-from simulation.lead_correlate import LeadCorrelate
-# now we make a vector of size n_vertices for each surface of cortex
-# hemisphere and put a int for each vertex that says it which label
-# it belongs to.
-parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
-parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
-for label_name, label_idx in labels.items():
-    label_id = int(label_name[:-3])
-    if '-lh' in label_name:
-        parcel_indices_lh[label_idx] = label_id
-    else:
-        parcel_indices_rh[label_idx] = label_id
-
-
-# Make sure label numbers different for each hemisphere
-#parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
-parcel_indices = np.concatenate((parcel_indices_lh,
-                                 parcel_indices_rh), axis=0)
-
-# Now pick vertices that are actually used in the forward
-inuse = np.concatenate((fwd['src'][0]['inuse'],
-                        fwd['src'][1]['inuse']), axis=0)
-
-parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
-
-assert len(parcel_indices_leadfield) == L.shape[1]
-
-lc = LeadCorrelate(L, parcel_indices_leadfield)
-lc.fit(X_train, y_train)
-
-y_pred = lc.predict(X_train)
-y_pred2 = lc.predict(X_test)
-
-#y_train_idx = np.argmax(y_train, 1) + 1
-#y_test_idx = np.argmax(y_test, 1) + 1
-score_test = lc.score(X_test, y_test)
-score_train = lc.score(X_train, y_train)
-
-# take one sample and look at the column of L that is the most
-# correlated with it. The predict the label idx of the max column.
+        # now we make a vector of size n_vertices for each surface of cortex
+        # hemisphere and put a int for each vertex that says it which label
+        # it belongs to.
+        parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
+        parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
+        for label_name, label_idx in labels.items():
+            label_id = int(label_name[:-3])
+            if '-lh' in label_name:
+                parcel_indices_lh[label_idx] = label_id
+            else:
+                parcel_indices_rh[label_idx] = label_id
 
 
-# look for the parcel that has the source with the highest correlation with
-# the data
+        # Make sure label numbers different for each hemisphere
+        #parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
+        parcel_indices = np.concatenate((parcel_indices_lh,
+                                        parcel_indices_rh), axis=0)
+
+        # Now pick vertices that are actually used in the forward
+        inuse = np.concatenate((fwd['src'][0]['inuse'],
+                                fwd['src'][1]['inuse']), axis=0)
+
+        parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
+
+        assert len(parcel_indices_leadfield) == L.shape[1]
+
+        lc = LeadCorrelate(L, parcel_indices_leadfield)
+        lc.fit(X_train, y_train)
+        lc.plotFROC()
+
+        y_pred = lc.predict(X_train)
+        y_pred2 = lc.predict(X_test)
+
+        score_test = lc.score(X_test, y_test)
+        score_train = lc.score(X_train, y_train)
+
+        y_test_score.append(score_test)
+        y_train_score.append(score_train)
+        max_parcels_all.append(max_parcels)
+
+plt.figure()
+plt.plot(max_parcels_all, y_test_score,  'ro')
+plt.plot(max_parcels_all, y_train_score, 'ro')
+plt.xlabel('max parcels')
+plt.ylabel('score (avg #errors/sample/max parcels): higher is worse')
+
+plt.title('Results for 15 parcels')
+plt.show()
 
 
