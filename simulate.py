@@ -209,7 +209,7 @@ train_target = target[:n_samples_train]
 df_test = df.iloc[n_samples_train:]
 test_target = target[n_samples_train:]
 
-data_dir_specific = 'data_' + str(len_parcels_flat)
+data_dir_specific = 'data_' + str(len_parcels_flat) + '_' + str(n_parcels_max)
 if not os.path.isdir(data_dir_specific):
     os.mkdir(data_dir_specific)
 
@@ -233,8 +233,6 @@ evoked.plot_topomap()
 
 # data to give to the participants:
 # labels with their names and vertices: parcels
-# ? centers of mass: cms
-
 
 # reading forward matrix and saving
 fwd_fname = os.path.join(data_path, 'MEG', subject,
