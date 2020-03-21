@@ -160,7 +160,7 @@ hemi = 'both'
 subject = 'sample'
 n_samples_train = 1000
 n_samples_test = 300
-n_parcels_max = 1
+n_parcels_max = 2
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
