@@ -29,26 +29,23 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         """
         """
         df = self.decision_function(X)
+
+        # we are not interested in the parcel indices 0 (not used) so taking
+        # them out if they exist
+        if 0 in df:
+            df = df.drop(columns = 0)
+        df = np.array(df)
+        assert df.shape == y.shape
         df_mask_flat = df.ravel()[y.ravel() == 1]
         self.threshold_ = df_mask_flat.min()
 
-
-        '''
-        # calculate the likelihood to have a number of parcels
+        # check what is max possible number of parcels
         true_per_row = np.sum(y, axis=1).astype(int)
         self.max_active_sources_ = np.unique(true_per_row)[-1]
         self.n_sources_ = y.shape[1]
 
-        # occurences = np.bincount(true_per_row)[1:]
-        # self.prob_of_occurence = occurences / sum(occurences)
-
         self.is_fitted_ = True
-        self.threshold_ = 0
-        self.total_sensitivity_ = []
-        self.thresholds_ = []
 
-        self.computeFROC(X, y)
-        '''
         # `fit` should always return `self`
         return self
 
@@ -140,14 +137,15 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             x = X.iloc[idx]
             x = x / linalg.norm(x)  # normalize x to take correlations
 
-            if idx:
-                correlation = correlation.append(pd.DataFrame(np.abs(L.T.dot(x))).groupby(
-                         parcel_indices).max().transpose())
-            else:
-                correlation = pd.DataFrame(np.abs(L.T.dot(x))).groupby(
+            corr = pd.DataFrame(np.abs(L.T.dot(x))).groupby(
                          parcel_indices).max().transpose()
+            if idx:
+                correlation = correlation.append(corr)
+            else:
+                correlation = corr
 
-        return correlation.index = range(n_samples)
+        correlation.index = range(n_samples)
+        return correlation
 
     def computeFROC(self, X, y):
         """Generates the data required for plotting the FROC curve
