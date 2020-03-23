@@ -109,10 +109,8 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         score : float
             average number of errors per sample (the more the worse)
         """
-        y_pred = self.predict(X)
-        errors = np.abs(y_pred - y)
-        score = np.mean(errors)
-        return score
+
+        return self.froc_score(y, self.decision_function(X))
 
     def decision_function(self, X):
         """ Computes the correlation of the data with the lead field
@@ -145,6 +143,77 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         if 0 in correlation:
             correlation = correlation.drop(columns = 0)
         return correlation
+
+    def froc_score(self, y_true, y_score):
+        # TODO: finish up
+
+        y_true = np.ravel(y_true)
+        y_score = np.ravel(y_score)
+        classes = np.unique(y_true)
+
+        # FROC only for binary classification
+        if classes.shape[0] != 2:
+            raise ValueError("FROC is defined for binary classification only")
+
+        thresholds = np.unique(y_score)
+        neg_value, pos_value = classes[0], classes[1]
+
+        # total sensitivity: true positive normalized by sum of True
+        ts = np.zeros(thresholds.size, dtype=np.float)
+        # total false positive: False positive rate divided by lenght of y
+        tfp = np.zeros(thresholds.size, dtype=np.float)
+
+        current_pos_count = current_neg_count = sum_pos = sum_neg = idx = 0
+
+        _pos = float(np.sum(y_true == classes[1]))  # nb of true positive
+        n_neg = float(np.sum(y_true == classes[0]))  # nb of true negative
+
+        signal = np.c_[y_score, y_true]
+        sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
+        last_score = sorted_signal[0][0]
+        for score, value in sorted_signal:
+            if score == last_score:
+                if value == pos_value:
+                    current_pos_count += 1
+                else:
+                    current_neg_count += 1
+                print('same score')
+            else:
+                import pdb; pdb.set_trace()
+                ts[idx] = (sum_pos + current_pos_count) / n_pos
+                tfp[idx] = (sum_neg + current_neg_count) / n_neg
+
+                tpr[idx] = (sum_pos + current_pos_count) / n_pos
+                fpr[idx] = (sum_neg + current_neg_count) / n_neg
+                sum_pos += current_pos_count
+                sum_neg += current_neg_count
+                current_pos_count = 1 if value == pos_value else 0
+                current_neg_count = 1 if value == neg_value else 0
+                idx += 1
+                last_score = score
+        else:
+            tpr[-1] = (sum_pos + current_pos_count) / n_pos
+            fpr[-1] = (sum_neg + current_neg_count) / n_neg
+
+
+
+            # for thres in thresholds:
+            import pdb; pdb.set_trace()
+            unique, counts = np.unique(y - y_pred, return_counts=True)
+            total_FPs = counts[np.where(unique == -1)][0]
+            # total_TN = counts[np.where(unique == 1)][0]
+            unique, counts = np.unique(y + y_pred, return_counts=True)
+            total_TP = counts[np.where(unique == 2)][0]
+
+            sensitivity = total_TP / np.sum(y)
+            false_positives = total_FPs / len(y)
+            total_sensitivity.append(sensitivity)
+            total_false_positives.append(false_positives)
+        self.total_FPs_ = total_false_positives
+        self.total_sensitivity_ = total_sensitivity
+        self.thresholds_ = thresholds
+
+        return score
 
     def computeFROC(self, X, y):
         """Generates the data required for plotting the FROC curve
