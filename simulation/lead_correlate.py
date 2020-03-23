@@ -28,6 +28,12 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
     def fit(self, X, y):
         """
         """
+        df = self.decision_function(X)
+        df_mask_flat = df.ravel()[y.ravel() == 1]
+        self.threshold_ = df_mask_flat.min()
+
+
+        '''
         # calculate the likelihood to have a number of parcels
         true_per_row = np.sum(y, axis=1).astype(int)
         self.max_active_sources_ = np.unique(true_per_row)[-1]
@@ -42,7 +48,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         self.thresholds_ = []
 
         self.computeFROC(X, y)
-
+        '''
         # `fit` should always return `self`
         return self
 
@@ -117,6 +123,32 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         score = np.mean(errors)
         return score
 
+    def decision_function(self, X):
+        """ Computes the correlation of the data with the lead field
+        Args:
+            X: data
+        Returns:
+            decision: correlation of the signal from each parcel with the given
+            data for each sample, dtype = DataFrame
+        """
+        n_samples, _ = X.shape
+        L = self.lead_field
+        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
+        parcel_indices = self.parcel_indices_leadfield
+
+        for idx in range(n_samples):
+            x = X.iloc[idx]
+            x = x / linalg.norm(x)  # normalize x to take correlations
+
+            if idx:
+                correlation = correlation.append(pd.DataFrame(np.abs(L.T.dot(x))).groupby(
+                         parcel_indices).max().transpose())
+            else:
+                correlation = pd.DataFrame(np.abs(L.T.dot(x))).groupby(
+                         parcel_indices).max().transpose()
+
+        return correlation.index = range(n_samples)
+
     def computeFROC(self, X, y):
         """Generates the data required for plotting the FROC curve
 
@@ -174,3 +206,27 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             plt.text(fp, ts-0.025, t, rotation=45)
         plt.title('FROC, max parcels: ' + str(self.n_sources_))
         import pdb; pdb.set_trace()
+
+
+
+
+'''
+def fit(self, X, y):
+    df = self.decision_function(X)
+    df_mask_flat = df.ravel()[y.ravel() == 1]
+    self.threshold_ = df_mask_flat.min()
+    
+def predict(self, X):
+    return self.decision_function(X) >= self.threshold_
+
+def score(self, X, y):
+    return froc_score(y, self.decision_function(X))
+    
+
+def froc_score(y_true, y_pred):
+    ...
+    
+froc_score(y_test, clf.decision_function(X_test))
+
+cross_val_score(clf, X, y, cv=3)
+'''
