@@ -1,3 +1,4 @@
+import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 from scipy import linalg
@@ -24,18 +25,20 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         self.parcel_indices_leadfield = parcel_indices_leadfield
 
     def fit(self, X, y):
-        """ dummy
+        """
         """
         # calculate the likelihood to have a number of parcels
         true_per_row = np.sum(y, axis=1).astype(int)
-        self.n_active_sources_ = np.unique(true_per_row)
+        self.max_active_sources_ = np.unique(true_per_row)[-1]
         self.n_sources_ = y.shape[1]
+
         # occurences = np.bincount(true_per_row)[1:]
         # self.prob_of_occurence = occurences / sum(occurences)
 
         self.is_fitted_ = True
         self.computeFROC(X, y)
-        self.threshold = 0
+        self.threshold_ = 0
+
         # `fit` should always return `self`
         return self
 
@@ -55,27 +58,31 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         # X = check_array(X, accept_sparse=False)
         check_is_fitted(self, 'n_sources_')
         n_samples, _ = X.shape
+
         y_pred = np.zeros((n_samples, self.n_sources_), dtype=int)
+
         L = self.lead_field
         L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
         parcel_indices = self.parcel_indices_leadfield
         for idx in range(n_samples):
             x = X.iloc[idx]
             x = x / linalg.norm(x)  # normalize x to take correlations
-            likelihood = pd.Series(np.abs(L.T.dot(x))).groupby(parcel_indices).max()
+            likelihood = pd.Series(np.abs(L.T.dot(x))).groupby(
+                         parcel_indices).max()
             # consider only n max correlated sources where n is highest number
             # of sources calculated in fit()
-            if self.n_active_sources_[-1] == 1:
-                y = likelihood.idxmax().values[0]
+            if self.max_active_sources_ == 1:
+                y = likelihood.idxmax()
             else:
-                diffs = np.diff(likelihood.nlargest(self.n_sources[-1], [idx]).values[:,0])
+
+                diffs = np.diff(likelihood.nlargest(self.max_active_sources_).values)
                 try:
                     # setting arbitrary threshold
                     cut_at = np.where(diffs < self.threshold)[0][0] #-0.00025
                     y = np.array(likelihood.nlargest(cut_at + 1, [idx]).index)
                 except:
                     # take max possible parcels
-                    y = likelihood.nlargest(self.n_active_sources_[-1]).index
+                    y = likelihood.nlargest(self.max_active_sources_).index
                     y = np.array(y)
 
             y_pred[idx, y - 1] = 1
@@ -151,12 +158,12 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
 
 
     def plotFROC(self):
-        """Plots the FROC curve
+        """Plots the FROC curve (Free response receiver operating
+           characteristic curve)
         """
-        import matplotlib.pylab as plt
         fig = plt.figure()
         #fig.suptitle('Free response receiver operating characteristic curve', fontsize=12)
         plt.plot(self.total_FPs, self.total_sensitivity, color='#000000')
         plt.xlabel('total false positives', fontsize=12)
         plt.ylabel('total sensitivity', fontsize=12)
-        plt.title('FROC, max parcels: ' + str(self.n_sources[-1]))
+        plt.title('FROC, max parcels: ' + str(self.n_sources_))
