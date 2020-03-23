@@ -142,6 +142,7 @@ for data_dir in os.listdir('.'):
 
         lc = LeadCorrelate(L, parcel_indices_leadfield)
         lc.fit(X_train, y_train)
+        lc.predict(X_test)
         lc.plotFROC()
 
         y_pred = lc.predict(X_train)

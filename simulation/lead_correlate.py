@@ -29,11 +29,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         """
         """
         df = self.decision_function(X)
-
-        # we are not interested in the parcel indices 0 (not used) so taking
-        # them out if they exist
-        if 0 in df:
-            df = df.drop(columns = 0)
         df = np.array(df)
         assert df.shape == y.shape
         df_mask_flat = df.ravel()[y.ravel() == 1]
@@ -62,38 +57,37 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         y : ndarray, shape (n_samples,)
             Returns an array of ones.
         """
-        # X = check_array(X, accept_sparse=False)
-        check_is_fitted(self, 'n_sources_')
         n_samples, _ = X.shape
-
         y_pred = np.zeros((n_samples, self.n_sources_), dtype=int)
 
-        L = self.lead_field
-        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
-        parcel_indices = self.parcel_indices_leadfield
-        for idx in range(n_samples):
-            x = X.iloc[idx]
-            x = x / linalg.norm(x)  # normalize x to take correlations
-            likelihood = pd.Series(np.abs(L.T.dot(x))).groupby(
-                         parcel_indices).max()
-            # consider only n max correlated sources where n is highest number
-            # of sources calculated in fit()
-            if self.max_active_sources_ == 1:
-                y = likelihood.idxmax()
+        check_is_fitted(self, 'n_sources_')
+
+        corr = self.decision_function(X)
+        corr = np.array(corr)
+
+        # take values higher than threshold
+        corr_poss = corr >= self.threshold_
+        more, less, good = 0, 0, 0
+        # leave only max_active_sources_ parcels
+        #corr_argsort = np.argsort(corr) # sorts from the highest indices
+        for idx in range(0, len(corr_poss)):
+            # check if more than 0 and less than max_active_sources_
+            if sum(corr_poss[idx, :]) > self.max_active_sources_:
+                # take only self.max_active_sources_ highest possible corr
+                corr[idx, np.logical_not(corr_poss[idx, :])] = 0
+                y_pred[idx, np.argsort(
+                       corr[idx, :])[-self.max_active_sources_:]] = 1
+                more += 1
+            elif sum(corr_poss[idx, :]) < 1:
+                # take a single highest possible corr
+                max_corr_idx = np.argsort(corr[idx, :])[-1]
+                y_pred[idx, max_corr_idx] = 1
+                less += 1
             else:
+                # leave corr as selected by corr_poss
+                good += 1
+                y_pred[idx, corr_poss[idx, :]] = 1
 
-                diffs = np.diff(likelihood.nlargest(
-                                self.max_active_sources_).values)
-                try:
-                    # setting arbitrary threshold
-                    cut_at = np.where(diffs < self.threshold)[0][0]  # -0.00025
-                    y = np.array(likelihood.nlargest(cut_at + 1).index)
-                except IndexError:
-                    # take max possible parcels
-                    y = likelihood.nlargest(self.max_active_sources_).index
-                    y = np.array(y)
-
-            y_pred[idx, y - 1] = 1
         return y_pred
 
     def score(self, X, y):
@@ -145,6 +139,11 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
                 correlation = corr
 
         correlation.index = range(n_samples)
+
+        # we don't use the 0 index
+        # TODO: remove passing L.idx = 0 all together
+        if 0 in correlation:
+            correlation = correlation.drop(columns = 0)
         return correlation
 
     def computeFROC(self, X, y):
@@ -209,10 +208,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
 
 
 '''
-def fit(self, X, y):
-    df = self.decision_function(X)
-    df_mask_flat = df.ravel()[y.ravel() == 1]
-    self.threshold_ = df_mask_flat.min()
     
 def predict(self, X):
     return self.decision_function(X) >= self.threshold_
