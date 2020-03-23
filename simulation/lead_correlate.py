@@ -4,6 +4,7 @@ import pandas as pd
 from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.feature_selection import f_regression
 from sklearn.utils.validation import check_is_fitted
 # from sklearn.utils.validation import check_X_y, check_array
 # from sklearn.utils.multiclass import unique_labels
@@ -36,8 +37,11 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         # self.prob_of_occurence = occurences / sum(occurences)
 
         self.is_fitted_ = True
-        self.computeFROC(X, y)
         self.threshold_ = 0
+        self.total_sensitivity_ = []
+        self.thresholds_ = []
+
+        self.computeFROC(X, y)
 
         # `fit` should always return `self`
         return self
@@ -150,18 +154,23 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             false_positives = total_FPs / len(y)
             total_sensitivity.append(sensitivity)
             total_false_positives.append(false_positives)
-        self.total_FPs = total_false_positives
-        self.total_sensitivity = total_sensitivity
-
-        self.thresholds = thresholds
+        self.total_FPs_ = total_false_positives
+        self.total_sensitivity_ = total_sensitivity
+        self.thresholds_ = thresholds
         return total_false_positives, total_sensitivity, thresholds
 
     def plotFROC(self):
         """Plots the FROC curve (Free response receiver operating
            characteristic curve)
         """
+
         plt.figure()
-        plt.plot(self.total_FPs, self.total_sensitivity, color='#000000')
+        plt.plot(self.total_FPs_, self.total_sensitivity_, color='#000000')
+        plt.plot(self.total_FPs_, self.total_sensitivity_, 'ro')
         plt.xlabel('total false positives', fontsize=12)
         plt.ylabel('total sensitivity', fontsize=12)
+        thresh = self.thresholds_.round(5).astype(str)
+        for fp, ts, t in zip(self.total_FPs_, self.total_sensitivity_, thresh):
+            plt.text(fp, ts-0.025, t, rotation=45)
         plt.title('FROC, max parcels: ' + str(self.n_sources_))
+        import pdb; pdb.set_trace()

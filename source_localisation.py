@@ -91,7 +91,7 @@ y_test_score = []
 y_train_score = []
 max_parcels_all = []
 for data_dir in os.listdir('.'):
-    if 'data_15' in data_dir:
+    if 'data_15_2' in data_dir:
         max_parcels = data_dir[8:]
         L = np.load(os.path.join(data_dir, 'lead_field.npz'))
         L = L['arr_0']
