@@ -15,6 +15,7 @@ from simulation.lead_correlate import LeadCorrelate
 # X_train = pd.read_csv(os.path.join('data', 'train.csv'))
 # y_train = sparse.load_npz(os.path.join('data', 'train_target.npz')).toarray()
 
+'''
 # Visualize
 if 0:
     import mne  # noqa
@@ -35,12 +36,13 @@ if 0:
     plt.tight_layout()
     plt.save(os.path.join(fig_dir, 'visualize.png'))
     plt.show()
+'''
 
 clf = KNeighborsClassifier(3)
 model = MultiOutputClassifier(clf, n_jobs=-1)
 # model.fit(X_train, y_train)
 
-## Load test data
+# Load test data
 # X_test = pd.read_csv(os.path.join('data', 'test.csv'))
 # y_test = sparse.load_npz(os.path.join('data', 'test_target.npz')).toarray()
 # print(model.score(X_test, y_test))
@@ -61,7 +63,8 @@ for data_dir in os.listdir('.'):
         y_train = sparse.load_npz(os.path.join(data_dir,
                                             'train_target.npz')).toarray()
         X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
-        y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
+        y_test = sparse.load_npz(os.path.join(data_dir,
+                                 'test_target.npz')).toarray()
 
         for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
             no_samples_test = int(no_samples * 0.2)
@@ -76,7 +79,8 @@ import matplotlib.pylab as plt
 plt.figure()
 
 for s in scores_all.keys():
-    plt.plot(data_samples[:len(scores_all[s])], scores_all[s], label = s + ' parcels')
+    plt.plot(data_samples[:len(scores_all[s])], scores_all[s],
+             label = s + ' parcels')
 plt.legend()
 plt.xlabel('number of samples used')
 plt.ylabel('score (on Kneighours)')
@@ -94,12 +98,12 @@ for data_dir in os.listdir('.'):
 
         X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
         y_train = sparse.load_npz(os.path.join(data_dir,
-                                                    'train_target.npz')).toarray()
+                                  'train_target.npz')).toarray()
         X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
-        y_test = sparse.load_npz(os.path.join(data_dir, 'test_target.npz')).toarray()
+        y_test = sparse.load_npz(os.path.join(data_dir,
+                                 'test_target.npz')).toarray()
 
         with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
-            #pickle.dump(parcel_vertices, outfile)
             labels = pickle.load(outfile)
 
         # reading forward matrix and saving
@@ -107,7 +111,7 @@ for data_dir in os.listdir('.'):
         data_path = mne.datasets.sample.data_path()
         subject = 'sample'
         fwd_fname = os.path.join(data_path, 'MEG', subject,
-                                subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+                                 subject + '_audvis-meg-eeg-oct-6-fwd.fif')
         fwd = mne.read_forward_solution(fwd_fname)
         fwd = mne.convert_forward_solution(fwd, force_fixed=True)
         lead_field = fwd['sol']['data']
@@ -124,9 +128,7 @@ for data_dir in os.listdir('.'):
             else:
                 parcel_indices_rh[label_idx] = label_id
 
-
         # Make sure label numbers different for each hemisphere
-        #parcel_indices_rh[parcel_indices_rh != 0] += np.max(parcel_indices_lh)
         parcel_indices = np.concatenate((parcel_indices_lh,
                                         parcel_indices_rh), axis=0)
 
@@ -160,5 +162,3 @@ plt.ylabel('score (avg #errors/sample/max parcels): higher is worse')
 
 plt.title('Results for 15 parcels')
 plt.show()
-
-

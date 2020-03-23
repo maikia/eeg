@@ -75,12 +75,13 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
                 y = likelihood.idxmax()
             else:
 
-                diffs = np.diff(likelihood.nlargest(self.max_active_sources_).values)
+                diffs = np.diff(likelihood.nlargest(
+                                self.max_active_sources_).values)
                 try:
                     # setting arbitrary threshold
-                    cut_at = np.where(diffs < self.threshold)[0][0] #-0.00025
-                    y = np.array(likelihood.nlargest(cut_at + 1, [idx]).index)
-                except:
+                    cut_at = np.where(diffs < self.threshold)[0][0]  # -0.00025
+                    y = np.array(likelihood.nlargest(cut_at + 1).index)
+                except IndexError:
                     # take max possible parcels
                     y = likelihood.nlargest(self.max_active_sources_).index
                     y = np.array(y)
@@ -112,7 +113,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         score = np.mean(errors)
         return score
 
-
     def computeFROC(self, X, y):
         """Generates the data required for plotting the FROC curve
 
@@ -120,11 +120,11 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             X: data
             y: true classified
         Returns:
-            total_FPs:      A list containing the average number of false positives
+            total_FPs:  A list containing the average number of false positives
             per image for different thresholds
 
-            total_sensitivity:  A list containig overall sensitivity of the system
-            for different thresholds
+            total_sensitivity:  A list containig overall sensitivity of the
+            system for different thresholds
         """
         # LL ≡ lesion localization, i.e., a (1)
         # lesion marked to within an agreed upon accuracy.
@@ -142,7 +142,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             y_pred = self.predict(X)
             unique, counts = np.unique(y - y_pred, return_counts=True)
             total_FPs = counts[np.where(unique == -1)][0]
-            total_TN = counts[np.where(unique == 1)][0]
+            # total_TN = counts[np.where(unique == 1)][0]
             unique, counts = np.unique(y + y_pred, return_counts=True)
             total_TP = counts[np.where(unique == 2)][0]
 
@@ -154,15 +154,13 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         self.total_sensitivity = total_sensitivity
 
         self.thresholds = thresholds
-        return  total_false_positives, total_sensitivity, thresholds
-
+        return total_false_positives, total_sensitivity, thresholds
 
     def plotFROC(self):
         """Plots the FROC curve (Free response receiver operating
            characteristic curve)
         """
-        fig = plt.figure()
-        #fig.suptitle('Free response receiver operating characteristic curve', fontsize=12)
+        plt.figure()
         plt.plot(self.total_FPs, self.total_sensitivity, color='#000000')
         plt.xlabel('total false positives', fontsize=12)
         plt.ylabel('total sensitivity', fontsize=12)
