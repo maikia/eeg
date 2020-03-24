@@ -91,7 +91,7 @@ y_test_score = []
 y_train_score = []
 max_parcels_all = []
 for data_dir in os.listdir('.'):
-    if 'data_15_2' in data_dir:
+    if 'data_15_3' in data_dir:
         max_parcels = data_dir[8:]
         L = np.load(os.path.join(data_dir, 'lead_field.npz'))
         L = L['arr_0']
@@ -142,8 +142,8 @@ for data_dir in os.listdir('.'):
 
         lc = LeadCorrelate(L, parcel_indices_leadfield)
         lc.fit(X_train, y_train)
-        lc.predict(X_test)  # XXX assign to nothing?
-
+        y_pred1 = lc.predict(X_test)
+        y_pred2 = lc.predict(X_train)
         # plotFROC()
 
         # y_pred = lc.predict(X_train)

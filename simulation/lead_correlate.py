@@ -28,7 +28,11 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         df = np.array(df)
         assert df.shape == y.shape
         df_mask_flat = df.ravel()[y.ravel() == 1]
-        self.threshold_ = df_mask_flat.min()
+
+        # threshold is selected at 2% of all true
+        sorted_mask = np.sort(df_mask_flat)
+        thresh_idx = int(len(df_mask_flat)*(0.55))
+        self.threshold_ = sorted_mask[thresh_idx]
 
         # check what is max possible number of parcels
         true_per_row = np.sum(y, axis=1).astype(int)
@@ -64,6 +68,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         # take values higher than threshold
         corr_poss = corr >= self.threshold_  # boolen
         # leave only max_active_sources_ parcels
+
         for idx in range(0, len(corr_poss)):
             # check if more than 0 and less than max_active_sources_
             if sum(corr_poss[idx, :]) > self.max_active_sources_:
@@ -78,7 +83,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             else:
                 # leave corr as selected by corr_poss
                 y_pred[idx, corr_poss[idx, :]] = 1
-
+        print(np.unique(np.sum(y_pred, 1), return_counts=True))
         return y_pred
 
     def score(self, X, y):
@@ -109,16 +114,16 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         plt.subplot(2,1,1)
         plt.plot(FPavg_list_treshold, sensitivity_list_treshold, 'bo',
                  label='other')
-        plt.xlabel('total false positives', fontsize=12)
-        plt.ylabel('total sensitivity', fontsize=12)
+        plt.xlabel('average number of false positives (FP) per scan', fontsize=12)
+        plt.ylabel('sensitivity', fontsize=12)
         # thresh = threshs.round(5).astype(str)[::400]
         # for fp, ts, t in zip(tfp[::400], ts[::400], thresh):
         #     plt.text(fp, ts - 0.025, t, rotation=45)
 
         ts, tfp, thresholds = froc_score(y, self.decision_function(X))
         plt.plot(tfp, ts, 'ro', label='ours')
-        plt.xlabel('total false positives', fontsize=12)
-        plt.ylabel('total sensitivity', fontsize=12)
+        plt.xlabel('average number of false positives (FP) per scan', fontsize=12)
+        plt.ylabel('sensitivity', fontsize=12)
         plt.legend()
         # thresh = threshs.round(5).astype(str)[::400]
         # for fp, ts, t in zip(tfp[::400], ts[::400], thresh):
@@ -174,8 +179,8 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
 #     threshs = thresholds[::-1]
 #     plt.figure()
 #     plt.plot(tfp, ts, 'ro')
-#     plt.xlabel('total false positives', fontsize=12)
-#     plt.ylabel('total sensitivity', fontsize=12)
+#     plt.xlabel('false positives per sample', fontsize=12)
+#     plt.ylabel('sensitivity', fontsize=12)
 #     thresh = threshs(5).astype(str)[::100]
 #     for fp, ts, t in zip(tfp, ts, thresh):
 #         plt.text(fp, ts - 0.025, t, rotation=45)
@@ -197,10 +202,10 @@ def froc_score(y_true, y_score):
     Returns
     -------
     ts : array
-        total sensitivity: true positive normalized by sum of all true
+        sensitivity: true positive normalized by sum of all true
         positives
     tfp : array
-        total false positive: False positive rate divided by length of
+        false positive: False positive rate divided by length of
         y_true
     thresholds : array, shape = [>2]
         Thresholds on y_score used to compute ts and tfp.
@@ -230,10 +235,10 @@ def froc_score(y_true, y_score):
 
     thresholds = np.unique(y_score)
 
-    # total sensitivity: true positive normalized by sum of all true
+    # sensitivity: true positive normalized by sum of all true
     # positives
     ts = np.zeros(thresholds.size, dtype=np.float)
-    # total false positive: False positive rate divided by length of y_true
+    # false positive: False positive rate divided by length of y_true
     tfp = np.zeros(thresholds.size, dtype=np.float)
 
     idx = 0
