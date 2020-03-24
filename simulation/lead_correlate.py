@@ -101,7 +101,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             average number of errors per sample (the more the worse)
         """
 
-        return self.froc_score(y, self.decision_function(X))
+        return froc_score(y, self.decision_function(X))
 
     def decision_function(self, X):
         """ Computes the correlation of the data with the lead field
@@ -120,10 +120,10 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             x = X.iloc[idx]
             x = x / linalg.norm(x)  # normalize x to take correlations
 
-            corr = pd.DataFrame(np.abs(L.T.dot(x))).groupby(
-                         parcel_indices).max().transpose()
+            corr = pd.DataFrame(
+                np.abs(L.T.dot(x))).groupby(parcel_indices).max().transpose()
             if idx:
-                correlation = correlation.append(corr)
+                correlation = correlation.append(corr)  # please run flake8
             else:
                 correlation = corr
 
@@ -135,114 +135,118 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             correlation = correlation.drop(columns=0)
         return correlation
 
-    def froc_score(self, y_true, y_score):
-        """compute Free response receiver operating characteristic curve (FROC)
-        Note: this implementation is restricted to the binary classification
-        task.
-        Parameters
-        ----------
-        y_true : array, shape = [n_samples x n_classes]
-                 true binary labels
-        y_score : array, shape = [n_samples x n_classes]
-                 target scores: probability estimates of the positive class,
-                 confidence values
-        Returns
-        -------
-        ts : array
-            total sensitivity: true positive normalized by sum of all true
-            positives
-        tfp : array
-            total false positive: False positive rate divided by length of
-            y_true
-        thresholds : array, shape = [>2]
-            Thresholds on y_score used to compute ts and tfp.
-            *Note*: Since the thresholds are sorted from low to high values,
-            they are reversed upon returning them to ensure they
-            correspond to both fpr and tpr, which are sorted in reversed order
-            during their calculation.
 
-        References
-        ----------
-        http://www.devchakraborty.com/Receiver%20operating%20characteristic.pdf
-        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms458993.pdf
-        """
+# def plot_froc():
+#     """Plots the FROC curve (Free response receiver operating
+#        characteristic curve)
+#     """
+#     threshs = thresholds[::-1]
+#     plt.figure()
+#     plt.plot(tfp, ts, 'ro')
+#     plt.xlabel('total false positives', fontsize=12)
+#     plt.ylabel('total sensitivity', fontsize=12)
+#     thresh = threshs(5).astype(str)[::100]
+#     for fp, ts, t in zip(tfp, ts, thresh):
+#         plt.text(fp, ts - 0.025, t, rotation=45)
+#     plt.title('FROC, max parcels: ' + str(self.n_sources_))
 
-        n_samples = len(y_true)
-        classes = np.unique(y_true)
 
-        n_pos = float(np.sum(y_true == classes[1]))  # nb of true positive
+def froc_score(y_true, y_score):
+    """compute Free response receiver operating characteristic curve (FROC)
+    Note: this implementation is restricted to the binary classification
+    task.
 
-        y_true = np.ravel(y_true)
-        y_score = np.ravel(y_score)
+    Parameters
+    ----------
+    y_true : array, shape = [n_samples x n_classes]
+             true binary labels
+    y_score : array, shape = [n_samples x n_classes]
+             target scores: probability estimates of the positive class,
+             confidence values
+    Returns
+    -------
+    ts : array
+        total sensitivity: true positive normalized by sum of all true
+        positives
+    tfp : array
+        total false positive: False positive rate divided by length of
+        y_true
+    thresholds : array, shape = [>2]
+        Thresholds on y_score used to compute ts and tfp.
+        *Note*: Since the thresholds are sorted from low to high values,
+        they are reversed upon returning them to ensure they
+        correspond to both fpr and tpr, which are sorted in reversed order
+        during their calculation.
 
-        # FROC only for binary classification
-        if classes.shape[0] != 2:
-            raise ValueError("FROC is defined for binary classification only")
+    References
+    ----------
+    http://www.devchakraborty.com/Receiver%20operating%20characteristic.pdf
+    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms458993.pdf
+    """
 
-        thresholds = np.unique(y_score)
+    n_samples, n_sources = y_true.shape
+    classes = np.unique(y_true)
 
-        # total sensitivity: true positive normalized by sum of all true
-        # positives
-        ts = np.zeros(thresholds.size, dtype=np.float)
-        # total false positive: False positive rate divided by length of y_true
-        tfp = np.zeros(thresholds.size, dtype=np.float)
+    n_pos = float(np.sum(y_true == classes[1]))  # nb of true positive
 
-        idx = 0
+    y_true = np.ravel(y_true)
+    y_score = np.ravel(y_score)
 
-        signal = np.c_[y_score, y_true]
-        sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
-        for score, value in sorted_signal:
-            t = value
-            t_est = sorted_signal[:, 0] >= score
+    # FROC only for binary classification
+    # XXX : what you implement is ROC-AUC then?
+    if classes.shape[0] != 2:
+        raise ValueError("FROC is defined for binary classification only")
 
-            # false positives for this score (threshold)
-            unique, counts = np.unique(sorted_signal[:, 1] - t_est,
-                                       return_counts=True)
-            try:
-                fps = counts[np.where(unique == -1)][0]
-            except IndexError:
-                fps = 0
-            # true positives for this score (threshold)
-            unique, counts = np.unique(sorted_signal[:, 1] + t_est,
-                                       return_counts=True)
-            try:
-                tps = counts[np.where(unique == 2)][0]
-            except IndexError:
-                tps = 0
+    thresholds = np.unique(y_score)
 
-            ts[idx] = tps
-            tfp[idx] = fps
+    # total sensitivity: true positive normalized by sum of all true
+    # positives
+    ts = np.zeros(thresholds.size, dtype=np.float)
+    # total false positive: False positive rate divided by length of y_true
+    tfp = np.zeros(thresholds.size, dtype=np.float)
 
-            idx += 1
+    idx = 0
 
-        tfp = tfp / n_samples
-        ts = ts / n_pos
+    signal = np.c_[y_score, y_true]
+    sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
+    for score, value in sorted_signal:
+        t = value
+        t_est = sorted_signal[:, 0] >= score
 
-        threshs = thresholds[::-1]
+        # false positives for this score (threshold)
+        unique, counts = np.unique(sorted_signal[:, 1] - t_est,
+                                   return_counts=True)
+        try:
+            fps = counts[np.where(unique == -1)][0]
+        except IndexError:
+            fps = 0
+        # true positives for this score (threshold)
+        unique, counts = np.unique(sorted_signal[:, 1] + t_est,
+                                   return_counts=True)
+        try:
+            tps = counts[np.where(unique == 2)][0]
+        except IndexError:
+            tps = 0
 
-        # TODO: remove:
-        plt.figure()
-        plt.plot(tfp, ts, 'ro')
-        plt.xlabel('total false positives', fontsize=12)
-        plt.ylabel('total sensitivity', fontsize=12)
-        thresh = threshs.round(5).astype(str)[::400]
-        for fp, ts, t in zip(tfp[::400], ts[::400], thresh):
-            plt.text(fp, ts-0.025, t, rotation=45)
-        plt.title('FROC, max parcels: ' + str(self.n_sources_))
-        plt.show()
+        ts[idx] = tps
+        tfp[idx] = fps
 
-        return ts, tfp, thresholds[::-1]
+        idx += 1
 
-    def plotFROC(self):
-        """Plots the FROC curve (Free response receiver operating
-           characteristic curve)
-        """
-        threshs = thresholds[::-1]
-        plt.figure()
-        plt.plot(tfp, ts, 'ro')
-        plt.xlabel('total false positives', fontsize=12)
-        plt.ylabel('total sensitivity', fontsize=12)
-        thresh = threshs(5).astype(str)[::100]
-        for fp, ts, t in zip(tfp, ts, thresh):
-            plt.text(fp, ts-0.025, t, rotation=45)
-        plt.title('FROC, max parcels: ' + str(self.n_sources_))
+    tfp = tfp / n_samples
+    ts = ts / n_pos
+
+    threshs = thresholds[::-1]
+
+    # TODO: remove:
+    plt.figure()
+    plt.plot(tfp, ts, 'ro')
+    plt.xlabel('total false positives', fontsize=12)
+    plt.ylabel('total sensitivity', fontsize=12)
+    thresh = threshs.round(5).astype(str)[::400]
+    for fp, ts, t in zip(tfp[::400], ts[::400], thresh):
+        plt.text(fp, ts - 0.025, t, rotation=45)
+    plt.title('FROC, max parcels: ' + str(n_sources))
+    plt.show()
+
+    return ts, tfp, thresholds[::-1]

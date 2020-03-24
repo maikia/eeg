@@ -142,7 +142,7 @@ for data_dir in os.listdir('.'):
 
         lc = LeadCorrelate(L, parcel_indices_leadfield)
         lc.fit(X_train, y_train)
-        lc.predict(X_test)
+        lc.predict(X_test)  # XXX assign to nothing?
 
         # plotFROC()
 
@@ -159,7 +159,7 @@ for data_dir in os.listdir('.'):
         max_parcels_all.append(max_parcels)
 
 plt.figure()
-plt.plot(max_parcels_all, y_test_score,  'ro')
+plt.plot(max_parcels_all, y_test_score, 'ro')
 plt.plot(max_parcels_all, y_train_score, 'ro')
 plt.xlabel('max parcels')
 plt.ylabel('score (avg #errors/sample/max parcels): higher is worse')
