@@ -152,6 +152,8 @@ for data_dir in os.listdir('.'):
         score_test = lc.score(X_test, y_test)
         score_train = lc.score(X_train, y_train)
 
+        # TODO: cross_val_score(clf, X, y, cv=3)
+
         y_test_score.append(score_test)
         y_train_score.append(score_train)
         max_parcels_all.append(max_parcels)

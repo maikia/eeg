@@ -165,13 +165,18 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         References
         ----------
         http://www.devchakraborty.com/Receiver%20operating%20characteristic.pdf
+        https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms458993.pdf
         """
-        # TODO: finish up
+
+        n_samples = len(y_true)
+        classes = np.unique(y_true)
+
+        n_pos = float(np.sum(y_true == classes[1]))  # nb of true positive
+        n_neg = float(np.sum(y_true == classes[0]))  # nb of true negative
 
         y_true = np.ravel(y_true)
         y_score = np.ravel(y_score)
 
-        classes = np.unique(y_true)
 
         # FROC only for binary classification
         if classes.shape[0] != 2:
@@ -188,130 +193,62 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
 
         current_pos_count = current_neg_count = sum_pos = sum_neg = idx = 0
 
-        _pos = float(np.sum(y_true == classes[1]))  # nb of true positive
-        n_neg = float(np.sum(y_true == classes[0]))  # nb of true negative
-
         signal = np.c_[y_score, y_true]
         sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
         last_score = sorted_signal[0][0]
         for score, value in sorted_signal:
-            if score == last_score:
-                if value == pos_value:
-                    current_pos_count += 1
-                else:
-                    current_neg_count += 1
-                print('same score')
-            else:
-                import pdb; pdb.set_trace()
-                ts[idx] = (sum_pos + current_pos_count) / n_pos
-                tfp[idx] = (sum_neg + current_neg_count) / n_neg
+            t = value
+            t_est = sorted_signal[:, 0] >= score
 
-                tpr[idx] = (sum_pos + current_pos_count) / n_pos
-                fpr[idx] = (sum_neg + current_neg_count) / n_neg
-                sum_pos += current_pos_count
-                sum_neg += current_neg_count
-                current_pos_count = 1 if value == pos_value else 0
-                current_neg_count = 1 if value == neg_value else 0
-                idx += 1
-                last_score = score
-        else:
-            tpr[-1] = (sum_pos + current_pos_count) / n_pos
-            fpr[-1] = (sum_neg + current_neg_count) / n_neg
+            # false positives for this score (threshold)
+            unique, counts = np.unique(sorted_signal[:, 1] - t_est, return_counts=True)
+            try:
+                fps = counts[np.where(unique == -1)][0]
+            except IndexError:
+                fps = 0
+            # true positives for this score (threshold)
+            unique, counts = np.unique(sorted_signal[:, 1] + t_est, return_counts=True)
+            try:
+                tps = counts[np.where(unique == 2)][0]
+            except IndexError:
+                tps = 0
+
+            ts[idx] = tps
+            tfp[idx] = fps
+
+            idx += 1
+
+        tfp = tfp / n_samples
+        ts = ts / n_pos
+
+        threshs = thresholds[::-1]
+
+        # TODO: remove:
+        plt.figure()
+        plt.plot(tfp, ts, 'ro')
+        plt.xlabel('total false positives', fontsize=12)
+        plt.ylabel('total sensitivity', fontsize=12)
+        thresh = threshs.round(5).astype(str)[::400]
+        for fp, ts, t in zip(tfp[::400], ts[::400], thresh):
+            plt.text(fp, ts-0.025, t, rotation=45)
+        plt.title('FROC, max parcels: ' + str(self.n_sources_))
+        plt.show()
+
+        return ts, tfp, thresholds[::-1]
 
 
-
-            # for thres in thresholds:
-            import pdb; pdb.set_trace()
-            unique, counts = np.unique(y - y_pred, return_counts=True)
-            total_FPs = counts[np.where(unique == -1)][0]
-            # total_TN = counts[np.where(unique == 1)][0]
-            unique, counts = np.unique(y + y_pred, return_counts=True)
-            total_TP = counts[np.where(unique == 2)][0]
-
-            sensitivity = total_TP / np.sum(y)
-            false_positives = total_FPs / len(y)
-            total_sensitivity.append(sensitivity)
-            total_false_positives.append(false_positives)
-        self.total_FPs_ = total_false_positives
-        self.total_sensitivity_ = total_sensitivity
-        self.thresholds_ = thresholds
-
-        return score
-
-    def computeFROC(self, X, y):
-        """Generates the data required for plotting the FROC curve
-
-        Args:
-            X: data
-            y: true classified
-        Returns:
-            total_FPs:  A list containing the average number of false positives
-            per image for different thresholds
-
-            total_sensitivity:  A list containig overall sensitivity of the
-            system for different thresholds
-        """
-        # LL ≡ lesion localization, i.e., a (1)
-        # lesion marked to within an agreed upon accuracy.
-        # NL ≡ non-lesion localization, i.e., the mark is not close to any
-        # lesion.
-        # LLF ≡ lesion localization fraction ≡ # LL divided by total number of
-        # lesions (0 ≤ LLF ≤ 1).
-        # NLF ≡ non-lesion localization fraction ≡ # NL divided by total number
-        # of images (0 ≤ NLF); note the lack of an upper bound
-        thresholds = np.linspace(-0.1, -0.000001, 15)
-        total_sensitivity = []
-        total_false_positives = []
-        for thres in thresholds:  # -0.00025)
-            self.threshold = thres
-            y_pred = self.predict(X)
-            unique, counts = np.unique(y - y_pred, return_counts=True)
-            total_FPs = counts[np.where(unique == -1)][0]
-            # total_TN = counts[np.where(unique == 1)][0]
-            unique, counts = np.unique(y + y_pred, return_counts=True)
-            total_TP = counts[np.where(unique == 2)][0]
-
-            sensitivity = total_TP / np.sum(y)
-            false_positives = total_FPs / len(y)
-            total_sensitivity.append(sensitivity)
-            total_false_positives.append(false_positives)
-        self.total_FPs_ = total_false_positives
-        self.total_sensitivity_ = total_sensitivity
-        self.thresholds_ = thresholds
-        return total_false_positives, total_sensitivity, thresholds
 
     def plotFROC(self):
         """Plots the FROC curve (Free response receiver operating
            characteristic curve)
         """
-
+        # ts, tfp, 
+        threshs = thresholds[::-1]
         plt.figure()
-        plt.plot(self.total_FPs_, self.total_sensitivity_, color='#000000')
-        plt.plot(self.total_FPs_, self.total_sensitivity_, 'ro')
+        plt.plot(tfp, ts, 'ro')
         plt.xlabel('total false positives', fontsize=12)
         plt.ylabel('total sensitivity', fontsize=12)
-        thresh = self.thresholds_.round(5).astype(str)
-        for fp, ts, t in zip(self.total_FPs_, self.total_sensitivity_, thresh):
+        thresh = threshs(5).astype(str)[::100]
+        for fp, ts, t in zip(tfp, ts, thresh):
             plt.text(fp, ts-0.025, t, rotation=45)
         plt.title('FROC, max parcels: ' + str(self.n_sources_))
-        import pdb; pdb.set_trace()
-
-
-
-
-'''
-    
-def predict(self, X):
-    return self.decision_function(X) >= self.threshold_
-
-def score(self, X, y):
-    return froc_score(y, self.decision_function(X))
-    
-
-def froc_score(y_true, y_pred):
-    ...
-    
-froc_score(y_test, clf.decision_function(X_test))
-
-cross_val_score(clf, X, y, cv=3)
-'''
