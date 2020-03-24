@@ -12,10 +12,7 @@ from sklearn.utils.validation import check_is_fitted
 
 
 class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
-    """ A template estimator to be used as a reference implementation.
-    For more information regarding how to build your own estimator, read more
-    in the :ref:`User Guide <user_guide>`.
-
+    """
     Parameters
     ----------
     demo_param : str, default='demo_param'
@@ -45,7 +42,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         return self
 
     def predict(self, X):
-        """ A reference implementation of a predicting function.
+        """ predicting function.
 
         Parameters
         ----------
@@ -66,10 +63,9 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         corr = np.array(corr)
 
         # take values higher than threshold
-        corr_poss = corr >= self.threshold_
+        corr_poss = corr >= self.threshold_  # boolen
         more, less, good = 0, 0, 0
         # leave only max_active_sources_ parcels
-        #corr_argsort = np.argsort(corr) # sorts from the highest indices
         for idx in range(0, len(corr_poss)):
             # check if more than 0 and less than max_active_sources_
             if sum(corr_poss[idx, :]) > self.max_active_sources_:
@@ -77,15 +73,12 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
                 corr[idx, np.logical_not(corr_poss[idx, :])] = 0
                 y_pred[idx, np.argsort(
                        corr[idx, :])[-self.max_active_sources_:]] = 1
-                more += 1
             elif sum(corr_poss[idx, :]) < 1:
                 # take a single highest possible corr
                 max_corr_idx = np.argsort(corr[idx, :])[-1]
                 y_pred[idx, max_corr_idx] = 1
-                less += 1
             else:
                 # leave corr as selected by corr_poss
-                good += 1
                 y_pred[idx, corr_poss[idx, :]] = 1
 
         return y_pred
@@ -145,10 +138,39 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         return correlation
 
     def froc_score(self, y_true, y_score):
+        """compute Free response receiver operating characteristic curve (FROC)
+        Note: this implementation is restricted to the binary classification task.
+        Parameters
+        ----------
+        y_true : array, shape = [n_samples x n_classes]
+                 true binary labels
+        y_score : array, shape = [n_samples x n_classes]
+                 target scores: probability estimates of the positive class,
+                 confidence values
+        Returns
+        -------
+        ts : array, shape = [>2]
+            total sensitivity: true positive normalized by sum of all true
+            positives
+        tfp : array, shape = [>2]
+            total false positive: False positive rate divided by length of
+            y_true
+        thresholds : array, shape = [>2]
+            Thresholds on y_score used to compute ts and tfp.
+            *Note*: Since the thresholds are sorted from low to high values,
+            they are reversed upon returning them to ensure they
+            correspond to both fpr and tpr, which are sorted in reversed order
+            during their calculation.
+
+        References
+        ----------
+        http://www.devchakraborty.com/Receiver%20operating%20characteristic.pdf
+        """
         # TODO: finish up
 
         y_true = np.ravel(y_true)
         y_score = np.ravel(y_score)
+
         classes = np.unique(y_true)
 
         # FROC only for binary classification
@@ -158,9 +180,10 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         thresholds = np.unique(y_score)
         neg_value, pos_value = classes[0], classes[1]
 
-        # total sensitivity: true positive normalized by sum of True
+        # total sensitivity: true positive normalized by sum of all true
+        # positives
         ts = np.zeros(thresholds.size, dtype=np.float)
-        # total false positive: False positive rate divided by lenght of y
+        # total false positive: False positive rate divided by length of y_true
         tfp = np.zeros(thresholds.size, dtype=np.float)
 
         current_pos_count = current_neg_count = sum_pos = sum_neg = idx = 0
