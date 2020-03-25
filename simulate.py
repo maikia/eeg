@@ -16,7 +16,7 @@ from tqdm import tqdm
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
-# from simulation.plot_signal import visualize_brain
+from simulation.plot_signal import visualize_brain
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -173,14 +173,18 @@ parcels_flat = [item for sublist in parcels for item in sublist]
 parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
+
+if 1:
+    visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
+                    parcels_flat)
+
+
 len_parcels_flat = len(parcels_flat)
 # save label names with their corresponding vertices
-idx = 1
 parcel_vertices = {}
-for parcel in parcels_flat:
+for idx, parcel in enumerate(parcels_flat, 1):
     parcel_name = str(idx) + parcel.name[-3:]
     parcel_vertices[parcel_name] = parcel.vertices
-    idx += 1
 
 # prepare train and test data
 signal_list = []
