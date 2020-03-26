@@ -91,10 +91,11 @@ y_test_score = []
 y_train_score = []
 max_parcels_all = []
 for data_dir in os.listdir('.'):
-    if 'data_15_3' in data_dir:
+    if 'data_15_2' in data_dir:
         max_parcels = data_dir[8:]
-        L = np.load(os.path.join(data_dir, 'lead_field.npz'))
-        L = L['arr_0']
+        lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
+        parcel_indices_leadfield = lead_matrix['parcel_indices']
+        L = lead_matrix['lead_field']
 
         X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
         y_train = sparse.load_npz(os.path.join(data_dir,
@@ -105,40 +106,6 @@ for data_dir in os.listdir('.'):
 
         with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
             labels = pickle.load(outfile)
-
-        # reading forward matrix and saving
-        import mne
-        data_path = mne.datasets.sample.data_path()
-        subject = 'sample'
-        fwd_fname = os.path.join(data_path, 'MEG', subject,
-                                 subject + '_audvis-meg-eeg-oct-6-fwd.fif')
-        fwd = mne.read_forward_solution(fwd_fname)
-        fwd = mne.convert_forward_solution(fwd, force_fixed=True)
-        lead_field = fwd['sol']['data']
-
-        # now we make a vector of size n_vertices for each surface of cortex
-        # hemisphere and put a int for each vertex that says it which label
-        # it belongs to.
-        parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
-        parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
-        for label_name, label_idx in labels.items():
-            label_id = int(label_name[:-3])
-            if '-lh' in label_name:
-                parcel_indices_lh[label_idx] = label_id
-            else:
-                parcel_indices_rh[label_idx] = label_id
-
-        # Make sure label numbers different for each hemisphere
-        parcel_indices = np.concatenate((parcel_indices_lh,
-                                        parcel_indices_rh), axis=0)
-
-        # Now pick vertices that are actually used in the forward
-        inuse = np.concatenate((fwd['src'][0]['inuse'],
-                                fwd['src'][1]['inuse']), axis=0)
-
-        parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
-
-        assert len(parcel_indices_leadfield) == L.shape[1]
 
         lc = LeadCorrelate(L, parcel_indices_leadfield)
         lc.fit(X_train, y_train)
@@ -180,21 +147,6 @@ for data_dir in os.listdir('.'):
         # y_test_score.append(score_test)
         # y_train_score.append(score_train)
         # max_parcels_all.append(max_parcels)
-
-        '''
-        Partial area measures, such as the areaunder the FROC curve to the left
-        of a predefined abscissa value or the value of the ordinateat the
-        predefined abscissa have been used as figures of merit.
-
-        The AFROC curve and associated figure of merit—Bunch et al [4] also
-        introducedthe plot of LLF vs. false positive fraction (FPF) which was
-        subsequently termed thealternative FROC (AFROC) by the author [10].
-        Since the AFROC curve is completelycontained within the unit square,
-        since both axes are probabilities, the author suggested that,analogous
-        to the area under the ROC curve, the area under the AFROC be used as a
-        figure-of-merit for FROC performance
-
-        '''
 
 '''
 plt.figure()

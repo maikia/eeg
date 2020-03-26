@@ -23,7 +23,7 @@ from simulation.plot_signal import visualize_brain
 
 mem = Memory('./')
 # N_JOBS = -1
-N_JOBS = -1
+N_JOBS = 1
 
 make_random_parcellation = mem.cache(make_random_parcellation)
 
@@ -158,8 +158,8 @@ n_parcels = 10  # number of parcels per hemisphere
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 1000
-n_samples_test = 300
+n_samples_train = 10
+n_samples_test = 3
 n_parcels_max = 2
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -174,7 +174,7 @@ parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
 
-if 1:
+if 0:
     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
                     parcels_flat)
 
@@ -247,4 +247,31 @@ lead_field = fwd['sol']['data']
 
 picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
 lead_field = lead_field[picks_eeg, :]
-np.savez(os.path.join(data_dir_specific, 'lead_field.npz'), lead_field)
+
+# now we make a vector of size n_vertices for each surface of cortex
+# hemisphere and put a int for each vertex that says it which label
+# it belongs to.
+parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
+parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
+for label_name, label_idx in parcel_vertices.items():
+    label_id = int(label_name[:-3])
+    if '-lh' in label_name:
+        parcel_indices_lh[label_idx] = label_id
+    else:
+        parcel_indices_rh[label_idx] = label_id
+
+# Make sure label numbers different for each hemisphere
+parcel_indices = np.concatenate((parcel_indices_lh,
+                                  parcel_indices_rh), axis=0)
+
+# Now pick vertices that are actually used in the forward
+inuse = np.concatenate((fwd['src'][0]['inuse'],
+                          fwd['src'][1]['inuse']), axis=0)
+parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
+
+assert len(parcel_indices_leadfield) == lead_field.shape[1]
+
+np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
+         lead_field=lead_field, parcel_indices=parcel_indices_leadfield)
+
+
