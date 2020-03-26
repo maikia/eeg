@@ -165,7 +165,7 @@ def afroc_score(y_true, y_score):
         performance
         [1] https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms
             458993.pdf
-        '''
+
     '''
     ts, fpf, thresholds = calc_froc(y_true, y_score)
 
