@@ -1,6 +1,36 @@
 import numpy as np
 
 
+def get_true_false(true_signal, pred_signal):
+    # given true and predicted signal 1d array of 0s and 1s
+    # return true_positive, true_negative, false_positive, false_negative
+    unique, counts = np.unique(true_signal - pred_signal, return_counts=True)
+    try:
+        false_positive = counts[np.where(unique == -1)][0]
+    except IndexError:
+        false_positive = 0
+
+    try:
+        true_negative = counts[np.where(unique == 1)][0]
+    except IndexError:
+        true_negative = 0
+
+    unique, counts = np.unique(true_signal + pred_signal, return_counts=True)
+    try:
+        true_positive = counts[np.where(unique == 2)][0]
+    except IndexError:
+        true_positive = 0
+
+    try:
+        false_negative = counts[np.where(unique == 0)][0]
+    except IndexError:
+        false_negative = 0
+
+    assert len(true_signal) == (true_positive + true_negative +
+                                false_positive + false_negative)
+    return true_positive, true_negative, false_positive, false_negative
+
+
 def froc_score(y_true, y_score):
     """compute Free response receiver operating characteristic curve (FROC)
     Note: this implementation is restricted to the binary classification
@@ -62,20 +92,7 @@ def froc_score(y_true, y_score):
     for score, value in sorted_signal:
         t_est = sorted_signal[:, 0] >= score
 
-        # false positives for this score (threshold)
-        unique, counts = np.unique(sorted_signal[:, 1] - t_est,
-                                   return_counts=True)
-        try:
-            fps = counts[np.where(unique == -1)][0]
-        except IndexError:
-            fps = 0
-        # true positives for this score (threshold)
-        unique, counts = np.unique(sorted_signal[:, 1] + t_est,
-                                   return_counts=True)
-        try:
-            tps = counts[np.where(unique == 2)][0]
-        except IndexError:
-            tps = 0
+        tps, _, fps, _ = get_true_false(sorted_signal[:, 1], t_est)
 
         ts[idx] = tps
         tfp[idx] = fps
@@ -86,6 +103,7 @@ def froc_score(y_true, y_score):
     ts = ts / n_pos
 
     return ts, tfp, thresholds[::-1]
+
 
 # def plot_froc():
 #     """Plots the FROC curve (Free response receiver operating
