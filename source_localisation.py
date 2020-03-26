@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import pickle
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
 from scipy import sparse
 from sklearn.multioutput import MultiOutputClassifier
@@ -149,17 +149,30 @@ for data_dir in os.listdir('.'):
         # y_pred = lc.predict(X_train)
         # y_pred2 = lc.predict(X_test)
 
-        score_test = lc.score(X_test, y_test)
-        score_train = lc.score(X_train, y_train)
+        # score_test = lc.score(X_test, y_test)
+        # score_train = lc.score(X_train, y_train)
 
-        import pdb; pdb.set_trace()
-        # TODO: add hamming score or/and other
-        # TODO: cross_val_score(clf, X, y, cv=3)
+        # calculating
+        from sklearn.metrics import hamming_loss
+        hl = hamming_loss(y_test, y_pred1)
 
-        y_test_score.append(score_test)
-        y_train_score.append(score_train)
-        max_parcels_all.append(max_parcels)
+        from sklearn.metrics import jaccard_score
+        js = jaccard_score(y_test, y_pred1, average='samples')
+        print('score: hamming: {:.2f}, jaccard: {:.2f}'.format(hl, js))
 
+        from sklearn.model_selection import cross_val_score
+
+        # TODO: now, the smaller score the better
+        # find the way to make a better score
+        lc2 = LeadCorrelate(L, parcel_indices_leadfield)
+        cross_val = cross_val_score(lc2, X_train, y_train, cv=3)
+        print('cross validation (smaller the better): {}'.format(cross_val))
+
+        # y_test_score.append(score_test)
+        # y_train_score.append(score_train)
+        # max_parcels_all.append(max_parcels)
+
+'''
 plt.figure()
 plt.plot(max_parcels_all, y_test_score, 'ro')
 plt.plot(max_parcels_all, y_train_score, 'ro')
@@ -168,3 +181,4 @@ plt.ylabel('score (avg #errors/sample/max parcels): higher is worse')
 
 plt.title('Results for 15 parcels')
 plt.show()
+'''

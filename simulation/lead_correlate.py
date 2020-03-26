@@ -1,13 +1,11 @@
-import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.utils.validation import check_is_fitted
-# from sklearn.utils.validation import check_X_y, check_array
-# from sklearn.utils.multiclass import unique_labels
-# from sklearn.metrics import euclidean_distances
+
+import simulation.metrics as met
 
 
 class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
@@ -83,7 +81,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             else:
                 # leave corr as selected by corr_poss
                 y_pred[idx, corr_poss[idx, :]] = 1
-        print(np.unique(np.sum(y_pred, 1), return_counts=True))
         return y_pred
 
     def score(self, X, y):
@@ -105,110 +102,41 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         score : float
             average number of errors per sample (the more the worse)
         """
-        ts, tfp, thresholds = froc_score(y, self.decision_function(X))
-        return ts, tfp, thresholds
+        ts, tfp, thresholds = met.froc_score(y, self.decision_function(X))
 
+        # Compute the area using the composite trapezoidal rule.
+        area = np.trapz(y=ts, x=tfp)
 
-# def plot_froc():
-#     """Plots the FROC curve (Free response receiver operating
-#        characteristic curve)
-#     """
-#     threshs = thresholds[::-1]
-#     plt.figure()
-#     plt.plot(tfp, ts, 'ro')
-#     plt.xlabel('false positives per sample', fontsize=12)
-#     plt.ylabel('sensitivity', fontsize=12)
-#     thresh = threshs(5).astype(str)[::100]
-#     for fp, ts, t in zip(tfp, ts, thresh):
-#         plt.text(fp, ts - 0.025, t, rotation=45)
-#     plt.title('FROC, max parcels: ' + str(self.n_sources_))
+        return area
 
+    def decision_function(self, X):
+        """ Computes the correlation of the data with the lead field
+        Args:
+            X: data
+        Returns:
+            decision: correlation of the signal from each parcel with the given
+            data for each sample, dtype = DataFrame
+        """
+        n_samples, _ = X.shape
+        L = self.lead_field
+        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
+        parcel_indices = self.parcel_indices_leadfield
 
-def froc_score(y_true, y_score):
-    """compute Free response receiver operating characteristic curve (FROC)
-    Note: this implementation is restricted to the binary classification
-    task.
+        for idx in range(n_samples):
+            x = X.iloc[idx]
+            x = x / linalg.norm(x)  # normalize x to take correlations
 
-    Parameters
-    ----------
-    y_true : array, shape = [n_samples x n_classes]
-             true binary labels
-    y_score : array, shape = [n_samples x n_classes]
-             target scores: probability estimates of the positive class,
-             confidence values
-    Returns
-    -------
-    ts : array
-        sensitivity: true positive normalized by sum of all true
-        positives
-    tfp : array
-        false positive: False positive rate divided by length of
-        y_true
-    thresholds : array, shape = [>2]
-        Thresholds on y_score used to compute ts and tfp.
-        *Note*: Since the thresholds are sorted from low to high values,
-        they are reversed upon returning them to ensure they
-        correspond to both fpr and tpr, which are sorted in reversed order
-        during their calculation.
+            corr = pd.DataFrame(
+                np.abs(L.T.dot(x))).groupby(parcel_indices).max().transpose()
+            if not idx:
+                correlation = corr
+            else:
+                correlation = correlation.append(corr)  # please run flake8
 
-    References
-    ----------
-    http://www.devchakraborty.com/Receiver%20operating%20characteristic.pdf
-    https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms458993.pdf
-    """
+        correlation.index = range(n_samples)
 
-    n_samples, n_sources = y_true.shape
-    classes = np.unique(y_true)
-
-    n_pos = float(np.sum(y_true == classes[1]))  # nb of true positive
-
-    y_true = np.ravel(y_true)
-    y_score = np.ravel(y_score)
-
-    # FROC only for binary classification
-    # XXX : what you implement is ROC-AUC then?
-    if classes.shape[0] != 2:
-        raise ValueError("FROC is defined for binary classification only")
-
-    thresholds = np.unique(y_score)
-
-    # sensitivity: true positive normalized by sum of all true
-    # positives
-    ts = np.zeros(thresholds.size, dtype=np.float)
-    # false positive: False positive rate divided by length of y_true
-    tfp = np.zeros(thresholds.size, dtype=np.float)
-
-    idx = 0
-
-    signal = np.c_[y_score, y_true]
-    sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
-    for score, value in sorted_signal:
-        t = value
-        t_est = sorted_signal[:, 0] >= score
-
-        # false positives for this score (threshold)
-        unique, counts = np.unique(sorted_signal[:, 1] - t_est,
-                                   return_counts=True)
-        try:
-            fps = counts[np.where(unique == -1)][0]
-        except IndexError:
-            fps = 0
-        # true positives for this score (threshold)
-        unique, counts = np.unique(sorted_signal[:, 1] + t_est,
-                                   return_counts=True)
-        try:
-            tps = counts[np.where(unique == 2)][0]
-        except IndexError:
-            tps = 0
-
-        ts[idx] = tps
-        tfp[idx] = fps
-
-        idx += 1
-
-    tfp = tfp / n_samples
-    ts = ts / n_pos
-
-    threshs = thresholds[::-1]
-
-    return ts, tfp, thresholds[::-1]
+        # we don't use the 0 index
+        # TODO: remove passing L.idx = 0 all together
+        if 0 in correlation:
+            correlation = correlation.drop(columns=0)
+        return correlation
