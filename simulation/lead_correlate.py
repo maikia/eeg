@@ -130,8 +130,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
 
         correlation.index = range(n_samples)
 
-        # we don't use the 0 index
-        # TODO: remove passing L.idx = 0 all together
+        # in case 0 index is passed (which is of unused parcels, drop them)
         if 0 in correlation:
             correlation = correlation.drop(columns=0)
         return correlation

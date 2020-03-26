@@ -267,11 +267,17 @@ parcel_indices = np.concatenate((parcel_indices_lh,
 # Now pick vertices that are actually used in the forward
 inuse = np.concatenate((fwd['src'][0]['inuse'],
                           fwd['src'][1]['inuse']), axis=0)
-parcel_indices_leadfield = parcel_indices[np.where(inuse)[0]]
+parcel_indices_l = parcel_indices[np.where(inuse)[0]]
 
-assert len(parcel_indices_leadfield) == lead_field.shape[1]
+assert len(parcel_indices_l) == lead_field.shape[1]
+
+# Remove from parcel_indices and from the leadfield all the indices == 0 (not
+# used by our brain)
+lead_field = lead_field[:,parcel_indices_l != 0]
+parcel_indices_l = parcel_indices_l[parcel_indices_l != 0]
+assert len(parcel_indices_l) == lead_field.shape[1]
 
 np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
-         lead_field=lead_field, parcel_indices=parcel_indices_leadfield)
+         lead_field=lead_field, parcel_indices=parcel_indices_l)
 
 
