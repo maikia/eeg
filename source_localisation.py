@@ -160,16 +160,19 @@ for data_dir in os.listdir('.'):
         js = jaccard_score(y_test, y_pred1, average='samples')
         print('score: hamming: {:.2f}, jaccard: {:.2f}'.format(hl, js))
 
-        from sklearn.model_selection import cross_val_score
-
+        from sklearn.model_selection import cross_validate
         lc2 = LeadCorrelate(L, parcel_indices_leadfield)
-        cross_val = cross_val_score(lc2, X_train, y_train, cv=3)
-        print('cross validation (smaller the better): {}'.format(cross_val))
+        # cross_val = cross_validate(lc2, X_train, y_train, cv=3)
+        # print('cross validation (smaller the better): {}'.format(cross_val))
+
 
         from sklearn.metrics import make_scorer
-        scorer_froc = make_scorer(met.froc_score, needs_proba=True)
-        scorer_afroc = make_scorer(met.afroc_score, needs_proba=True)
-        cross_val_score(lc2, X_train, y_train, cv=3)
+        scoring = {'froc_score': make_scorer(met.froc_score),
+                   'afroc_score': make_scorer(met.afroc_score),
+                   'jaccard': make_scorer(jaccard_score)}
+
+        cross_validate(lc2, X_train, y_train, cv=3,
+                        scoring = scoring)
 
         froc = met.froc_score(X_test, y_test)
         area = met.calc_froc_area(X_test, y_test)

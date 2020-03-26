@@ -31,6 +31,7 @@ def get_true_false(true_signal, pred_signal):
     return true_positive, true_negative, false_positive, false_negative
 
 
+
 def calc_froc(y_true, y_score):
     """compute Free response receiver operating characteristic curve (FROC)
     Note: this implementation is restricted to the binary classification
@@ -141,6 +142,10 @@ def calc_afroc(y_true, y_score):
 
 
 def froc_score(y_true, y_score):
+    ''' Compute Area Under the Free response receiver operating characteristic
+        Curve (FROC AUC) from prediction scores
+    '''
+
     ts, tfp, thresholds = calc_froc(y_true, y_score)
 
     # Compute the area using the composite trapezoidal rule.
@@ -149,6 +154,9 @@ def froc_score(y_true, y_score):
 
 
 def afroc_score(y_true, y_score):
+    ''' Compute Area Under the Alternative Free response receiver operating
+        characteristic Curve (FROC AUC) from prediction scores
+    '''
     ts, fpf, thresholds = calc_froc(y_true, y_score)
 
     # Compute the area using the composite trapezoidal rule.
