@@ -133,14 +133,13 @@ for data_dir in os.listdir('.'):
         # cross_val = cross_validate(lc2, X_train, y_train, cv=3)
         # print('cross validation (smaller the better): {}'.format(cross_val))
 
-
         from sklearn.metrics import make_scorer
         scoring = {'froc_score': make_scorer(met.froc_score),
                    'afroc_score': make_scorer(met.afroc_score),
                    'jaccard': make_scorer(jaccard_score)}
 
         cross_validate(lc2, X_train, y_train, cv=3,
-                        scoring = scoring)
+                       scoring=scoring)
 
         froc = met.froc_score(X_test, y_test)
         area = met.calc_froc_area(X_test, y_test)

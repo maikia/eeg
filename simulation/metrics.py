@@ -31,7 +31,6 @@ def get_true_false(true_signal, pred_signal):
     return true_positive, true_negative, false_positive, false_negative
 
 
-
 def calc_froc(y_true, y_score):
     """compute Free response receiver operating characteristic curve (FROC)
     Note: this implementation is restricted to the binary classification
