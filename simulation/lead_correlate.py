@@ -102,12 +102,7 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         score : float
             average number of errors per sample (the more the worse)
         """
-        ts, tfp, thresholds = met.froc_score(y, self.decision_function(X))
-
-        # Compute the area using the composite trapezoidal rule.
-        area = np.trapz(y=ts, x=tfp)
-
-        return area
+        return met.afroc_score(y, self.decision_function(X))
 
     def decision_function(self, X):
         """ Computes the correlation of the data with the lead field

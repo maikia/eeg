@@ -9,7 +9,7 @@ from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
 from simulation.lead_correlate import LeadCorrelate
-
+import simulation.metrics as met
 
 # Load train data
 # X_train = pd.read_csv(os.path.join('data', 'train.csv'))
@@ -162,15 +162,36 @@ for data_dir in os.listdir('.'):
 
         from sklearn.model_selection import cross_val_score
 
-        # TODO: now, the smaller score the better
-        # find the way to make a better score
         lc2 = LeadCorrelate(L, parcel_indices_leadfield)
         cross_val = cross_val_score(lc2, X_train, y_train, cv=3)
         print('cross validation (smaller the better): {}'.format(cross_val))
 
+        from sklearn.metrics import make_scorer
+        scorer_froc = make_scorer(met.froc_score, needs_proba=True)
+        scorer_afroc = make_scorer(met.afroc_score, needs_proba=True)
+        cross_val_score(lc2, X_train, y_train, cv=3)
+
+        froc = met.froc_score(X_test, y_test)
+        area = met.calc_froc_area(X_test, y_test)
+
         # y_test_score.append(score_test)
         # y_train_score.append(score_train)
         # max_parcels_all.append(max_parcels)
+
+        '''
+        Partial area measures, such as the areaunder the FROC curve to the left
+        of a predefined abscissa value or the value of the ordinateat the
+        predefined abscissa have been used as figures of merit.
+
+        The AFROC curve and associated figure of merit—Bunch et al [4] also
+        introducedthe plot of LLF vs. false positive fraction (FPF) which was
+        subsequently termed thealternative FROC (AFROC) by the author [10].
+        Since the AFROC curve is completelycontained within the unit square,
+        since both axes are probabilities, the author suggested that,analogous
+        to the area under the ROC curve, the area under the AFROC be used as a
+        figure-of-merit for FROC performance
+
+        '''
 
 '''
 plt.figure()
