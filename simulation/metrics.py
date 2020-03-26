@@ -156,6 +156,16 @@ def froc_score(y_true, y_score):
 def afroc_score(y_true, y_score):
     ''' Compute Area Under the Alternative Free response receiver operating
         characteristic Curve (FROC AUC) from prediction scores
+
+        True Positive fraction vs. false positive fraction (FPF) termed the
+        alternative FROC (AFROC).
+        Since the AFROC curve is completelycontained within the unit square,
+        since both axes are probabilities analogous to the area under the ROC
+        curve, the area under the AFROC be used as a figure-of-merit for FROC
+        performance
+        [1] https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms
+            458993.pdf
+        '''
     '''
     ts, fpf, thresholds = calc_froc(y_true, y_score)
 
