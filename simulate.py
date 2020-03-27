@@ -1,4 +1,6 @@
 import os
+import matplotlib
+matplotlib.use('svg')
 
 import numpy as np
 import pandas as pd
@@ -16,14 +18,14 @@ from tqdm import tqdm
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
-from simulation.plot_signal import visualize_brain
+#from simulation.plot_signal import visualize_brain
 
 # IMPORTANT: run it with ipython --gui=qt
 
 
 mem = Memory('./')
-# N_JOBS = -1
-N_JOBS = 1
+N_JOBS = -1
+# N_JOBS = 1
 
 make_random_parcellation = mem.cache(make_random_parcellation)
 
@@ -158,8 +160,8 @@ n_parcels = 10  # number of parcels per hemisphere
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 10
-n_samples_test = 3
+n_samples_train = 1000
+n_samples_test = 300
 n_parcels_max = 2
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -228,6 +230,7 @@ print(str(len(df_train)), ' train samples were saved')
 df_test.to_csv(os.path.join(data_dir_specific, 'test.csv'), index=False)
 save_npz(os.path.join(data_dir_specific, 'test_target.npz'), test_target)
 print(str(len(df_test)), ' test samples were saved')
+
 
 # Visualize
 fname = data_path + '/MEG/sample/sample_audvis-ave.fif'

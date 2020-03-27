@@ -2,7 +2,7 @@ import os
 import numpy as np
 import pandas as pd
 import pickle
-# import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 from scipy import sparse
 from sklearn.multioutput import MultiOutputClassifier
@@ -12,31 +12,12 @@ from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
 
 # Load train data
-# X_train = pd.read_csv(os.path.join('data', 'train.csv'))
-# y_train = sparse.load_npz(os.path.join('data', 'train_target.npz')).toarray()
+X_train = pd.read_csv(os.path.join('data_15_2', 'train.csv'))
+y_train = sparse.load_npz(os.path.join('data_15_2', 'train_target.npz')).toarray()
 
-'''
-# Visualize
-if 0:
-    import mne  # noqa
-    fig_dir = 'figs'
-    if not os.path.isdir(fig_dir):
-        os.mkdir(fig_dir)
 
-    data_path = mne.datasets.sample.data_path()
-    fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-    info = mne.read_evokeds(fname)[0].pick('eeg').info
-    n_classes = y_train.shape[1]
-    fig, axes = plt.subplots(5, n_classes, figsize=(16, 4))
-
-    for k in range(n_classes):
-        X_k = X_train.iloc[np.argmax(y_train, axis=1) == k]
-        for i, ax in enumerate(axes[:, k]):
-            mne.viz.plot_topomap(X_k.iloc[i].values, info, axes=ax)
-    plt.tight_layout()
-    plt.save(os.path.join(fig_dir, 'visualize.png'))
-    plt.show()
-'''
+from simulation.plot_signal import plot_sources_at_activation
+plot_sources_at_activation(X_train, y_train)
 
 clf = KNeighborsClassifier(3)
 model = MultiOutputClassifier(clf, n_jobs=-1)
@@ -131,10 +112,14 @@ for data_dir in os.listdir('.'):
         lc2 = LeadCorrelate(L, parcel_indices_leadfield)
 
         from sklearn.metrics import make_scorer
-        scoring = {'froc_score': make_scorer(met.froc_score, needs_threshold=True),
-                   'afroc_score': make_scorer(met.afroc_score, needs_threshold=True),
-                   'jaccard': make_scorer(jaccard_score, average='samples'),
-                   'hamming': make_scorer(hamming_loss, greater_is_better=False)}
+        scoring = {'froc_score': make_scorer(met.froc_score,
+                                             needs_threshold=True),
+                   'afroc_score': make_scorer(met.afroc_score,
+                                              needs_threshold=True),
+                   'jaccard': make_scorer(jaccard_score,
+                                          average='samples'),
+                   'hamming': make_scorer(hamming_loss,
+                                          greater_is_better=False)}
 
         scores = cross_validate(lc2, X_train, y_train, cv=3, scoring=scoring)
 
