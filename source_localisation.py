@@ -1,3 +1,4 @@
+import glob
 import os
 import numpy as np
 import pandas as pd
@@ -11,64 +12,81 @@ from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
 from simulation.plot_signal import plot_sources_at_activation
 
-visualize_data = True
+plot_data = False
 
-# Load train data
-X_train = pd.read_csv(os.path.join('data_15_2', 'train.csv'))
-y_train = sparse.load_npz(os.path.join('data_15_2',
-                                       'train_target.npz')).toarray()
 
-if visualize_data:
+def score_on_KNeighbours(X, y, X_test, y_test, neighbours = 3):
+    clf = KNeighborsClassifier(neighbours)
+    model = MultiOutputClassifier(clf, n_jobs=-1)
+    model.fit(X_train, y_train)
+    return model.score(X_test, y_test)
+
+
+def check_data(data_dir = '.', model = None):
+    # runs given model (if None KNeighbours = 3 will be used) with the data
+    # with different number of max sources and different number of brain
+    # parcels and plots their score depending on number of samples used.
+
+    # number of samples selected at each run
+    data_samples = np.logspace(1, 4, num=10, base=10, dtype='int')
+    scores_all = pd.DataFrame(columns=['n_parcels', 'max_sources', 'scores'])
+
+    if model is None:
+        clf = KNeighborsClassifier(3)
+        model = MultiOutputClassifier(clf, n_jobs=-1)
+
+    # check for all the data directories
+    for data_dir in os.listdir(data_dir):
+        if data_dir[:4] == 'data':
+            dir_name = data_dir.split('_')
+            max_sources = dir_name[-1]
+            n_parcels = dir_name[-2]
+            scores = []
+            print('working on %s' % (data_dir))
+
+        if data_dir[:4] == 'data':
+            X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
+            y_train = sparse.load_npz(os.path.join(data_dir,
+                                                'train_target.npz')).toarray()
+            X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
+            y_test = sparse.load_npz(os.path.join(data_dir,
+                                    'test_target.npz')).toarray()
+
+            for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
+                no_samples_test = int(no_samples * 0.2)
+                model.fit(X_train.head(no_samples),
+                                    y_train[:no_samples])
+                score = model.score(X_test.head(no_samples_test),
+                                                y_test[:no_samples_test])
+                scores.append(score)
+
+            scores_all = scores_all.append({'n_parcels': int(n_parcels),
+                               'max_sources': int(max_sources),
+                               'scores': scores}, ignore_index=True)
+
+
+    import matplotlib.pylab as plt
+    plt.figure()
+    max_sources_all = len(scores_all['max_sources'].unique())
+
+    for max_sources in range(1, max_sources_all+1):
+        plt.subplot(max_sources_all, 1, max_sources)
+        plt.title('nax sources: ' + str(max_sources))
+        scores_used = scores_all[scores_all['max_sources'] == max_sources]
+
+        for index, row in scores_used.iterrows():
+            plt.plot(data_samples[:len(row['scores'])], row['scores'],
+                     label = 'parcels: ' + str(row['n_parcels']))
+        plt.ylabel('score (on Kneighours)')
+        plt.legend()
+    plt.xlabel('number of samples used')
+    plt.savefig('score.png')
+
+check_data('.')
+
+
+if plot_data:
     plot_sources_at_activation(X_train, y_train)
-
-clf = KNeighborsClassifier(3)
-model = MultiOutputClassifier(clf, n_jobs=-1)
-# model.fit(X_train, y_train)
-
-# Load test data
-# X_test = pd.read_csv(os.path.join('data', 'test.csv'))
-# y_test = sparse.load_npz(os.path.join('data', 'test_target.npz')).toarray()
-# print(model.score(X_test, y_test))
-
-data_samples = np.logspace(1, 4, num=10, base=10, dtype='int')
-
-# check for all the data directories
-'''
-import glob
-scores_all = {}
-for data_dir in os.listdir('.'):
-    if data_dir[:4] == 'data':
-        scores = []
-        print('working on %s' % (data_dir))
-        no_parcels = int(data_dir[5:])
-
-        X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
-        y_train = sparse.load_npz(os.path.join(data_dir,
-                                            'train_target.npz')).toarray()
-        X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
-        y_test = sparse.load_npz(os.path.join(data_dir,
-                                 'test_target.npz')).toarray()
-
-        for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
-            no_samples_test = int(no_samples * 0.2)
-            model.fit(X_train.head(no_samples),
-                                   y_train[:no_samples])
-            score = model.score(X_test.head(no_samples_test),
-                                             y_test[:no_samples_test])
-            scores.append(score)
-        scores_all[str(no_parcels)] = scores
-
-import matplotlib.pylab as plt
-plt.figure()
-
-for s in scores_all.keys():
-    plt.plot(data_samples[:len(scores_all[s])], scores_all[s],
-             label = s + ' parcels')
-plt.legend()
-plt.xlabel('number of samples used')
-plt.ylabel('score (on Kneighours)')
-plt.savefig('score.png')
-'''
 
 y_test_score = []
 y_train_score = []
