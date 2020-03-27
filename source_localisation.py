@@ -1,9 +1,12 @@
 import os
 import numpy as np
 import pandas as pd
-import pickle
 
 from scipy import sparse
+from sklearn.metrics import hamming_loss
+from sklearn.metrics import jaccard_score
+from sklearn.metrics import make_scorer
+from sklearn.model_selection import cross_validate
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neighbors import KNeighborsClassifier
 
@@ -11,6 +14,7 @@ from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
 from simulation.plot_signal import plot_sources_at_activation
 from simulation.plot_signal import plot_samples_vs_score
+
 
 plot_data = True
 
@@ -27,7 +31,7 @@ def check_data(data_dir='.', model=None):
 
     if model is None:
         clf = KNeighborsClassifier(3)
-        model = MultiOutputClassifier(clf, n_jobs=-1)
+        model = MultiOutputClassifier(clf)
 
     # check for all the data directories
     for data_dir in os.listdir(data_dir):
@@ -46,11 +50,12 @@ def check_data(data_dir='.', model=None):
             y_test = sparse.load_npz(os.path.join(data_dir,
                                      'test_target.npz')).toarray()
 
-            used_samples = data_samples[data_samples < len(X_train)]
+            used_samples = data_samples[data_samples <= len(X_train)]
             for no_samples in used_samples:
                 no_samples_test = int(no_samples * 0.2)
                 model.fit(X_train.head(no_samples),
                           y_train[:no_samples])
+
                 score = model.score(X_test.head(no_samples_test),
                                     y_test[:no_samples_test])
                 scores.append(score)
@@ -67,15 +72,17 @@ if plot_data:
     scores_all, data_samples = check_data('.')
     plot_samples_vs_score(scores_all, data_samples)
 
-
 y_test_score = []
 y_train_score = []
 max_parcels_all = []
 for data_dir in os.listdir('.'):
-    if 'data_15_2' in data_dir:
-        # if plot_data:
-        #     plot_sources_at_activation(X_train, y_train)
-        max_parcels = data_dir[8:]
+    if data_dir[:4] == 'data':
+        dir_name = data_dir.split('_')
+        max_sources = dir_name[-1]
+        n_parcels = dir_name[-2]
+        scores = []
+        print('working on %s' % (data_dir))
+
         lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
         parcel_indices_leadfield = lead_matrix['parcel_indices']
         L = lead_matrix['lead_field']
@@ -87,33 +94,23 @@ for data_dir in os.listdir('.'):
         y_test = sparse.load_npz(os.path.join(data_dir,
                                  'test_target.npz')).toarray()
 
-        with open(os.path.join(data_dir, 'labels.pickle'), 'rb') as outfile:
-            labels = pickle.load(outfile)
+        if plot_data:
+            fig_dir = os.path.join(data_dir, 'figs')
+            plot_sources_at_activation(X_train, y_train, fig_dir=fig_dir)
 
         lc = LeadCorrelate(L, parcel_indices_leadfield)
-        lc.fit(X_train, y_train)
+        # lc.fit(X_train, y_train)
 
-        y_pred_test = lc.predict(X_test)
-        y_pred_train = lc.predict(X_train)
+        # y_pred_test = lc.predict(X_test)
+        # y_pred_train = lc.predict(X_train)
 
         # y_df_test = lc.decision_function(X_test)
         # y_df_train = lc.decision_function(X_train)
 
-        score_test = lc.score(X_test, y_test)
-        score_train = lc.score(X_train, y_train)
+        # score_test = lc.score(X_test, y_test)
+        # score_train = lc.score(X_train, y_train)
 
-        # calculating
-        from sklearn.metrics import hamming_loss
-        hl = hamming_loss(y_test, y_pred_test)
-
-        from sklearn.metrics import jaccard_score
-        js = jaccard_score(y_test, y_pred_test, average='samples')
-        print('score: hamming: {:.2f}, jaccard: {:.2f}'.format(hl, js))
-
-        from sklearn.model_selection import cross_validate
-        lc2 = LeadCorrelate(L, parcel_indices_leadfield)
-
-        from sklearn.metrics import make_scorer
+        # calculating scores
         scoring = {'froc_score': make_scorer(met.froc_score,
                                              needs_threshold=True),
                    'afroc_score': make_scorer(met.afroc_score,
@@ -123,7 +120,8 @@ for data_dir in os.listdir('.'):
                    'hamming': make_scorer(hamming_loss,
                                           greater_is_better=False)}
 
-        scores = cross_validate(lc2, X_train, y_train, cv=3, scoring=scoring)
+        scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
+        # save score
 
         # froc = met.froc_score(X_test, y_test)
         # area = met.calc_froc_area(X_test, y_test)
