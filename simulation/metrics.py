@@ -135,7 +135,7 @@ def calc_afroc(y_true, y_score):
     https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3679336/pdf/nihms458993.pdf
     """
 
-    ts, tfp, thresholds = froc_score(y_true, y_score)
+    ts, tfp, thresholds = calc_froc(y_true, y_score)
     fpf = 1 - np.e**(-tfp)
     return ts, fpf, thresholds
 
@@ -166,7 +166,7 @@ def afroc_score(y_true, y_score):
             458993.pdf
 
     '''
-    ts, fpf, thresholds = calc_froc(y_true, y_score)
+    ts, fpf, thresholds = calc_afroc(y_true, y_score)
 
     # Compute the area using the composite trapezoidal rule.
     area = np.trapz(y=ts, x=fpf)
