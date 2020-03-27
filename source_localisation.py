@@ -1,4 +1,3 @@
-import glob
 import os
 import numpy as np
 import pandas as pd
@@ -16,14 +15,7 @@ from simulation.plot_signal import plot_samples_vs_score
 plot_data = True
 
 
-def score_on_KNeighbours(X, y, X_test, y_test, neighbours = 3):
-    clf = KNeighborsClassifier(neighbours)
-    model = MultiOutputClassifier(clf, n_jobs=-1)
-    model.fit(X_train, y_train)
-    return model.score(X_test, y_test)
-
-
-def check_data(data_dir = '.', model = None):
+def check_data(data_dir='.', model=None):
     # runs given model (if None KNeighbours = 3 will be used) with the data
     # with different number of max sources and different number of brain
     # parcels and plots their score depending on number of samples used.
@@ -49,37 +41,40 @@ def check_data(data_dir = '.', model = None):
         if data_dir[:4] == 'data':
             X_train = pd.read_csv(os.path.join(data_dir, 'train.csv'))
             y_train = sparse.load_npz(os.path.join(data_dir,
-                                                'train_target.npz')).toarray()
+                                      'train_target.npz')).toarray()
             X_test = pd.read_csv(os.path.join(data_dir, 'test.csv'))
             y_test = sparse.load_npz(os.path.join(data_dir,
-                                    'test_target.npz')).toarray()
+                                     'test_target.npz')).toarray()
 
-            for no_samples in data_samples[data_samples]: #len(X_train)]:
+            used_samples = data_samples[data_samples < len(X_train)]
+            for no_samples in used_samples:
                 no_samples_test = int(no_samples * 0.2)
                 model.fit(X_train.head(no_samples),
-                                    y_train[:no_samples])
+                          y_train[:no_samples])
                 score = model.score(X_test.head(no_samples_test),
-                                                y_test[:no_samples_test])
+                                    y_test[:no_samples_test])
                 scores.append(score)
 
             scores_all = scores_all.append({'n_parcels': int(n_parcels),
-                               'max_sources': int(max_sources),
-                               'scores': scores}, ignore_index=True)
+                                            'max_sources': int(max_sources),
+                                            'scores': scores},
+                                           ignore_index=True)
     return scores_all, data_samples
 
 
 if plot_data:
+    # will run the model on each dataset before plotting
     scores_all, data_samples = check_data('.')
     plot_samples_vs_score(scores_all, data_samples)
 
-if plot_data:
-    plot_sources_at_activation(X_train, y_train)
 
 y_test_score = []
 y_train_score = []
 max_parcels_all = []
 for data_dir in os.listdir('.'):
     if 'data_15_2' in data_dir:
+        # if plot_data:
+        #     plot_sources_at_activation(X_train, y_train)
         max_parcels = data_dir[8:]
         lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
         parcel_indices_leadfield = lead_matrix['parcel_indices']

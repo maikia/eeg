@@ -56,8 +56,8 @@ def plot_sources_at_activation(X, y, fig_dir='figs', ext='.png'):
     plt.savefig(os.path.join(fig_dir, 'visualize' + ext))
 
 
-def plot_samples_vs_score(scores_all, data_samples, fig_dir = 'figs',
-                          ext = '.png'):
+def plot_samples_vs_score(scores_all, data_samples, fig_dir='figs',
+                          ext='.png'):
     '''
     scores_all: dataframe where each row is the result for one data, with
         the keys:
@@ -76,13 +76,14 @@ def plot_samples_vs_score(scores_all, data_samples, fig_dir = 'figs',
 
     for max_sources in range(1, max_sources_all+1):
         plt.subplot(max_sources_all, 1, max_sources)
-        plt.title('nax sources: ' + str(max_sources))
+        plt.title('max sources: ' + str(max_sources))
         scores_used = scores_all[scores_all['max_sources'] == max_sources]
 
         for index, row in scores_used.iterrows():
             plt.plot(data_samples[:len(row['scores'])], row['scores'],
-                     label = 'parcels: ' + str(row['n_parcels']))
+                     label='parcels: '+str(row['n_parcels']))
         plt.ylabel('score')
         plt.legend()
     plt.xlabel('number of samples used')
-    plt.savefig(os.path.join(fig_dir, 'score' + ext))
+    plt.tight_layout()
+    plt.savefig(os.path.join(fig_dir, 'score_data' + ext))
