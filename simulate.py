@@ -159,8 +159,7 @@ n_parcels = 10  # number of parcels per hemisphere
 random_state = 10
 hemi = 'both'
 subject = 'sample'
-n_samples_train = 1000
-n_samples_test = 300
+n_samples = 1000
 n_parcels_max = 2
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -175,9 +174,9 @@ parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
 
-if 0:
-    visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
-                    parcels_flat)
+# if 0:
+#     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
+#                     parcels_flat)
 
 
 len_parcels_flat = len(parcels_flat)
@@ -191,7 +190,6 @@ for idx, parcel in enumerate(parcels_flat, 1):
 signal_list = []
 target_list = []
 rng = np.random.RandomState(42)
-n_samples = n_samples_train + n_samples_test
 seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
 
@@ -208,12 +206,6 @@ data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
 df = pd.DataFrame(signal_list, columns=list(data_labels))
 target = targets_to_sparse(target_list, parcel_names)
 
-df_train = df.iloc[:n_samples_train]
-train_target = target[:n_samples_train]
-
-df_test = df.iloc[n_samples_train:]
-test_target = target[n_samples_train:]
-
 data_dir_specific = 'data_' + str(len_parcels_flat) + '_' + str(n_parcels_max)
 if not os.path.isdir(data_dir_specific):
     os.mkdir(data_dir_specific)
@@ -222,14 +214,9 @@ with open(os.path.join(data_dir_specific, 'labels.pickle'), 'wb') as outfile:
     pickle.dump(parcel_vertices, outfile)
 outfile.close()
 
-df_train.to_csv(os.path.join(data_dir_specific, 'train.csv'), index=False)
-save_npz(os.path.join(data_dir_specific, 'train_target.npz'), train_target)
-print(str(len(df_train)), ' train samples were saved')
-
-df_test.to_csv(os.path.join(data_dir_specific, 'test.csv'), index=False)
-save_npz(os.path.join(data_dir_specific, 'test_target.npz'), test_target)
-print(str(len(df_test)), ' test samples were saved')
-
+df.to_csv(os.path.join(data_dir_specific, 'X.csv'), index=False)
+save_npz(os.path.join(data_dir_specific, 'target.npz'), target)
+print(str(len(df)), ' samples were saved')
 
 # Visualize
 fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
