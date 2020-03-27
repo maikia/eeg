@@ -2,7 +2,6 @@ import os
 import numpy as np
 import pandas as pd
 import pickle
-import matplotlib.pyplot as plt
 
 from scipy import sparse
 from sklearn.multioutput import MultiOutputClassifier
@@ -10,14 +9,17 @@ from sklearn.neighbors import KNeighborsClassifier
 
 from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
+from simulation.plot_signal import plot_sources_at_activation
+
+visualize_data = True
 
 # Load train data
 X_train = pd.read_csv(os.path.join('data_15_2', 'train.csv'))
-y_train = sparse.load_npz(os.path.join('data_15_2', 'train_target.npz')).toarray()
+y_train = sparse.load_npz(os.path.join('data_15_2',
+                                       'train_target.npz')).toarray()
 
-
-from simulation.plot_signal import plot_sources_at_activation
-plot_sources_at_activation(X_train, y_train)
+if visualize_data:
+    plot_sources_at_activation(X_train, y_train)
 
 clf = KNeighborsClassifier(3)
 model = MultiOutputClassifier(clf, n_jobs=-1)

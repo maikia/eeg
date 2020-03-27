@@ -1,6 +1,4 @@
 import os
-import matplotlib
-matplotlib.use('svg')
 
 import numpy as np
 import pandas as pd
@@ -18,7 +16,8 @@ from tqdm import tqdm
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
-#from simulation.plot_signal import visualize_brain
+# from simulation.plot_signal import visualize_brain # TODO: add check if
+# running from the server do not import, causes errors
 
 # IMPORTANT: run it with ipython --gui=qt
 

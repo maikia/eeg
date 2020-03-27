@@ -49,8 +49,9 @@ def plot_sources_at_activation(X, y, fig_dir='figs', ext='.png'):
         info_temp = info.copy()
         info_temp['bads'] = []
         for i, ax in enumerate(axes[:, k]):
-            mne.viz.plot_topomap(X_k.iloc[i].values, info_temp, axes=ax,
-                                 show=False)
+            if X_k.shape[0] > i:
+                mne.viz.plot_topomap(X_k.iloc[i].values, info_temp, axes=ax,
+                                     show=False)
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, 'visualize' + ext))
     print('saved in ' + os.path.join(fig_dir, 'visualize' + ext))
