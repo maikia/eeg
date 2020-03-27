@@ -110,39 +110,36 @@ for data_dir in os.listdir('.'):
         lc = LeadCorrelate(L, parcel_indices_leadfield)
         lc.fit(X_train, y_train)
 
-        y_pred1 = lc.predict(X_test)
-        y_pred2 = lc.predict(X_train)
-        # plotFROC()
+        y_pred_test = lc.predict(X_test)
+        y_pred_train = lc.predict(X_train)
 
-        # y_pred = lc.predict(X_train)
-        # y_pred2 = lc.predict(X_test)
+        # y_df_test = lc.decision_function(X_test)
+        # y_df_train = lc.decision_function(X_train)
 
-        # score_test = lc.score(X_test, y_test)
-        # score_train = lc.score(X_train, y_train)
+        score_test = lc.score(X_test, y_test)
+        score_train = lc.score(X_train, y_train)
 
         # calculating
         from sklearn.metrics import hamming_loss
-        hl = hamming_loss(y_test, y_pred1)
+        hl = hamming_loss(y_test, y_pred_test)
 
         from sklearn.metrics import jaccard_score
-        js = jaccard_score(y_test, y_pred1, average='samples')
+        js = jaccard_score(y_test, y_pred_test, average='samples')
         print('score: hamming: {:.2f}, jaccard: {:.2f}'.format(hl, js))
 
         from sklearn.model_selection import cross_validate
         lc2 = LeadCorrelate(L, parcel_indices_leadfield)
-        # cross_val = cross_validate(lc2, X_train, y_train, cv=3)
-        # print('cross validation (smaller the better): {}'.format(cross_val))
 
         from sklearn.metrics import make_scorer
-        scoring = {'froc_score': make_scorer(met.froc_score),
-                   'afroc_score': make_scorer(met.afroc_score),
-                   'jaccard': make_scorer(jaccard_score)}
+        scoring = {'froc_score': make_scorer(met.froc_score, needs_threshold=True),
+                   'afroc_score': make_scorer(met.afroc_score, needs_threshold=True),
+                   'jaccard': make_scorer(jaccard_score, average='samples'),
+                   'hamming': make_scorer(hamming_loss, greater_is_better=False)}
 
-        cross_validate(lc2, X_train, y_train, cv=3,
-                       scoring=scoring)
+        scores = cross_validate(lc2, X_train, y_train, cv=3, scoring=scoring)
 
-        froc = met.froc_score(X_test, y_test)
-        area = met.calc_froc_area(X_test, y_test)
+        # froc = met.froc_score(X_test, y_test)
+        # area = met.calc_froc_area(X_test, y_test)
 
         # y_test_score.append(score_test)
         # y_train_score.append(score_train)
