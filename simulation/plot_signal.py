@@ -54,4 +54,35 @@ def plot_sources_at_activation(X, y, fig_dir='figs', ext='.png'):
                                      show=False)
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, 'visualize' + ext))
-    print('saved in ' + os.path.join(fig_dir, 'visualize' + ext))
+
+
+def plot_samples_vs_score(scores_all, data_samples, fig_dir = 'figs',
+                          ext = '.png'):
+    '''
+    scores_all: dataframe where each row is the result for one data, with
+        the keys:
+        'n_parcels': number of parcels in the given simulated data
+        'max_sources': maximum number of parcels activated simulteneoulsy
+        'scores': scores for running the data on the data_samples (if
+        len(scores) might be less than len(data_samples)). Then only first
+        data_samples are considered
+    data_samples: np.array with the number of smaples run to obtain each score
+    '''
+    if not os.path.isdir(fig_dir):
+        os.mkdir(fig_dir)
+
+    plt.figure()
+    max_sources_all = len(scores_all['max_sources'].unique())
+
+    for max_sources in range(1, max_sources_all+1):
+        plt.subplot(max_sources_all, 1, max_sources)
+        plt.title('nax sources: ' + str(max_sources))
+        scores_used = scores_all[scores_all['max_sources'] == max_sources]
+
+        for index, row in scores_used.iterrows():
+            plt.plot(data_samples[:len(row['scores'])], row['scores'],
+                     label = 'parcels: ' + str(row['n_parcels']))
+        plt.ylabel('score')
+        plt.legend()
+    plt.xlabel('number of samples used')
+    plt.savefig(os.path.join(fig_dir, 'score' + ext))

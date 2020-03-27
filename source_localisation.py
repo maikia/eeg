@@ -11,8 +11,9 @@ from sklearn.neighbors import KNeighborsClassifier
 from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
 from simulation.plot_signal import plot_sources_at_activation
+from simulation.plot_signal import plot_samples_vs_score
 
-plot_data = False
+plot_data = True
 
 
 def score_on_KNeighbours(X, y, X_test, y_test, neighbours = 3):
@@ -28,6 +29,7 @@ def check_data(data_dir = '.', model = None):
     # parcels and plots their score depending on number of samples used.
 
     # number of samples selected at each run
+
     data_samples = np.logspace(1, 4, num=10, base=10, dtype='int')
     scores_all = pd.DataFrame(columns=['n_parcels', 'max_sources', 'scores'])
 
@@ -52,7 +54,7 @@ def check_data(data_dir = '.', model = None):
             y_test = sparse.load_npz(os.path.join(data_dir,
                                     'test_target.npz')).toarray()
 
-            for no_samples in data_samples[data_samples < 4641]: #len(X_train)]:
+            for no_samples in data_samples[data_samples]: #len(X_train)]:
                 no_samples_test = int(no_samples * 0.2)
                 model.fit(X_train.head(no_samples),
                                     y_train[:no_samples])
@@ -63,27 +65,12 @@ def check_data(data_dir = '.', model = None):
             scores_all = scores_all.append({'n_parcels': int(n_parcels),
                                'max_sources': int(max_sources),
                                'scores': scores}, ignore_index=True)
+    return scores_all, data_samples
 
 
-    import matplotlib.pylab as plt
-    plt.figure()
-    max_sources_all = len(scores_all['max_sources'].unique())
-
-    for max_sources in range(1, max_sources_all+1):
-        plt.subplot(max_sources_all, 1, max_sources)
-        plt.title('nax sources: ' + str(max_sources))
-        scores_used = scores_all[scores_all['max_sources'] == max_sources]
-
-        for index, row in scores_used.iterrows():
-            plt.plot(data_samples[:len(row['scores'])], row['scores'],
-                     label = 'parcels: ' + str(row['n_parcels']))
-        plt.ylabel('score (on Kneighours)')
-        plt.legend()
-    plt.xlabel('number of samples used')
-    plt.savefig('score.png')
-
-check_data('.')
-
+if plot_data:
+    scores_all, data_samples = check_data('.')
+    plot_samples_vs_score(scores_all, data_samples)
 
 if plot_data:
     plot_sources_at_activation(X_train, y_train)
