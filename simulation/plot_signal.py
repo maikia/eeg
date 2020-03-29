@@ -27,7 +27,7 @@ def visualize_brain(subject, hemi, annot_name, subjects_dir, parcels_selected,
     for parcel in parcels_selected:
         brain.add_label(parcel, alpha=1, color=parcel.color)
 
-    brain.save_image(os.path.join(fig_dir, 'brain' + ext))
+    brain.save_image(os.path.join(fig_dir, 'brain_' + annot_name + ext))
 
 
 def plot_sources_at_activation(X, y, fig_dir='figs', ext='.png'):
@@ -74,14 +74,14 @@ def plot_samples_vs_score(scores_all, data_samples, fig_dir='figs',
     plt.figure()
     max_sources_all = len(scores_all['max_sources'].unique())
 
-    for max_sources in range(1, max_sources_all+1):
+    for max_sources in range(1, max_sources_all + 1):
         plt.subplot(max_sources_all, 1, max_sources)
         plt.title('max sources: ' + str(max_sources))
         scores_used = scores_all[scores_all['max_sources'] == max_sources]
 
         for index, row in scores_used.iterrows():
             plt.plot(data_samples[:len(row['scores'])], row['scores'],
-                     label='parcels: '+str(row['n_parcels']))
+                     label='parcels: ' + str(row['n_parcels']))
         plt.ylabel('score')
         plt.legend()
     plt.xlabel('number of samples used')

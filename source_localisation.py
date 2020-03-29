@@ -1,6 +1,9 @@
 import os
+import glob
+
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from scipy import sparse
 from sklearn.multioutput import MultiOutputClassifier
@@ -9,7 +12,6 @@ from sklearn.neighbors import KNeighborsClassifier
 from simulation.lead_correlate import LeadCorrelate
 import simulation.metrics as met
 from simulation.plot_signal import plot_sources_at_activation
-from simulation.plot_signal import plot_samples_vs_score
 
 from sklearn.metrics import hamming_loss
 from sklearn.metrics import jaccard_score
@@ -17,7 +19,7 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
 
-plot_data = False
+plot_data = True
 data_dir = 'data_15_2'
 max_parcels = 15
 
@@ -34,37 +36,43 @@ def learning_curve(X, y, model=None):
 
     n_samples_grid = np.logspace(1, np.log10(len(X_train)),
                                  num=10, base=10, dtype='int')
-    scores_all = pd.DataFrame(columns=['n_parcels', 'max_sources', 'scores'])
+    scores_all = pd.DataFrame(columns=['n_samples_train', 'score_test'])
 
     if model is None:
         clf = KNeighborsClassifier(3)
         model = MultiOutputClassifier(clf, n_jobs=-1)
 
     for n_samples_train in n_samples_grid:
-        model.fit(X_train.head(n_samples_train),
-                  y_train[:n_samples_train])
+        model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
         score = model.score(X_test, y_test)
-        scores.append(score)
+        scores_all = scores_all.append({'n_samples_train': n_samples_train,
+                                        'score_test': score},
+                                       ignore_index=True)
 
-    n_parcels = y_train.shape[1]
-    max_sources = y_train.sum(axis=1).max()
-    scores_all = scores_all.append({'n_parcels': int(n_parcels),
-                                    'max_sources': int(max_sources),
-                                    'scores': scores},
-                                   ignore_index=True)
+    n_parcels = int(y_train.shape[1])
+    max_sources = int(y_train.sum(axis=1).max())
 
-    return scores_all, n_samples_grid
+    scores_all['n_parcels'] = n_parcels
+    scores_all['max_sources'] = max_sources
+    scores_all['model'] = str(model)
+
+    return scores_all
 
 
-# if plot_data:
-#     plot_sources_at_activation(X_train, y_train)
+def load_data(data_dir):
+    lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
+    parcel_indices_leadfield = lead_matrix['parcel_indices']
+    L = lead_matrix['lead_field']
 
-lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
-parcel_indices_leadfield = lead_matrix['parcel_indices']
-L = lead_matrix['lead_field']
+    X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
+    y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
+    return X, y, L, parcel_indices_leadfield
 
-X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
-y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
+
+X, y, L, parcel_indices_leadfield = load_data(data_dir)
+
+if plot_data:
+    plot_sources_at_activation(X, y)
 
 X_train, X_test, y_train, y_test = \
     train_test_split(X, y, test_size=0.2, random_state=42)
@@ -74,9 +82,6 @@ lc.fit(X_train, y_train)
 
 y_pred_test = lc.predict(X_test)
 y_pred_train = lc.predict(X_train)
-
-score_test = lc.score(X_test, y_test)
-score_train = lc.score(X_train, y_train)
 
 # calculating
 hl = hamming_loss(y_test, y_pred_test)
@@ -95,17 +100,24 @@ scoring = {'froc_score': make_scorer(met.froc_score,
 scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
 
 scores = pd.DataFrame(scores)
-print(scores)
+scores[['test_%s' % s for s in scoring]]
+print(scores.agg(['mean', 'std']))
 
+# Do learning curve for all models and all datasets
+scores_all = []
+# data_dirs = ['data_15_2', 'data_46_2']
+data_dirs = sorted(glob.glob('data_*'))
+for data_dir in data_dirs:
+    X, y, L, parcel_indices_leadfield = load_data(data_dir)
+    lc = LeadCorrelate(L, parcel_indices_leadfield)
+    for model in [None, lc]:
+        scores_all.append(learning_curve(X, y, model=model))
 
-if plot_data:
-    scores_all, n_samples_grid = learning_curve(X, y, model=None)
-    plot_samples_vs_score(scores_all, n_samples_grid)
+scores_all = pd.concat(scores_all, axis=0)
 
-# plt.figure()
-# plt.plot(max_parcels_all, y_test_score, 'ro')
-# plt.plot(max_parcels_all, y_train_score, 'ro')
-# plt.xlabel('max parcels')
-# plt.ylabel('score (avg #errors/sample/max parcels): higher is worse')
-# plt.title('Results for 15 parcels')
-# plt.show()
+fig, ax = plt.subplots()
+for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model']):
+    ax.plot(df.n_samples_train, df.score_test, label=str(cond)[1:30])
+ax.set(xlabel='n_samples_train', ylabel='score')
+plt.legend()
+plt.savefig('figs/learning_curves.png')
