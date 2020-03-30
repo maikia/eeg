@@ -3,6 +3,7 @@ import pandas as pd
 from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn import linear_model
 from sklearn.utils.validation import check_is_fitted
 
 import simulation.metrics as met
@@ -114,6 +115,13 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         """
         n_samples, _ = X.shape
         L = self.lead_field
+        clf = linear_model.Lasso()
+        clf.fit(L, X.T).coef_
+        np.unique((clf.fit(L, X.T).coef_ != 0).astype(int))
+
+        import pdb; pdb.set_trace()
+
+        # ?? do the L has to be normalized for Lasso?
         L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
         parcel_indices = self.parcel_indices_leadfield
 
@@ -134,3 +142,17 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         if 0 in correlation:
             correlation = correlation.drop(columns=0)
         return correlation.values
+
+        """
+        L : leadfield
+        x : eeg
+        y : brain activity
+        physics : x = L y
+        lasso  argmin_beta || y - X beta ||^2 + \lambda || beta ||_1
+        this was standards stats notations
+        lasso  argmin_beta || x - L y ||^2 + \lambda || y ||_1
+        predict(x): return lasso.fit(L, x).coef_
+        decision_function(x): return np.abs(lasso.fit(L, x).coef_)
+        predict(x): return (lasso.fit(L, x).coef_ != 0).astype(int)
+    """
+

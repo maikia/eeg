@@ -22,8 +22,8 @@ if os.environ.get('DISPLAY'):  # display exists
     N_JOBS = 1
 else:
     # running on the server, no display
-    N_JOBS = -1
     visualize = False
+    N_JOBS = -1
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -157,13 +157,13 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 10  # number of parcels per hemisphere
+n_parcels = 50  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
 random_state = 10
 hemi = 'both'
 subject = 'sample'
 n_samples = 1000
-n_parcels_max = 1
+n_parcels_max = 3
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
