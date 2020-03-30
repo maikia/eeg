@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import pickle
-# import random
+
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
 
@@ -16,15 +16,18 @@ from tqdm import tqdm
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
-from simulation.plot_signal import visualize_brain  # TODO: add check if
-# running from the server do not import, causes errors
+if os.environ.get('DISPLAY'):  # display exists
+    from simulation.plot_signal import visualize_brain
+    visualize = True
+    N_JOBS = 1
+else:
+    # running on the server, no display
+    N_JOBS = -1
+    visualize = False
 
 # IMPORTANT: run it with ipython --gui=qt
 
-
 mem = Memory('./')
-N_JOBS = -1
-# N_JOBS = 1
 
 make_random_parcellation = mem.cache(make_random_parcellation)
 
@@ -160,7 +163,7 @@ random_state = 10
 hemi = 'both'
 subject = 'sample'
 n_samples = 1000
-n_parcels_max = 2
+n_parcels_max = 1
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -174,7 +177,7 @@ parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
 
-if 1:
+if visualize:
     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
                     parcels_flat)
 
