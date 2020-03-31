@@ -1,9 +1,10 @@
 import numpy as np
 import pandas as pd
-from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.multioutput import MultiOutputRegressor
 from sklearn import linear_model
+
 from sklearn.utils.validation import check_is_fitted
 
 import simulation.metrics as met
@@ -55,6 +56,8 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         -------
         y : ndarray, shape (n_samples,)
             Returns an array of ones.
+
+            TODO: predict(x): return (lasso.fit(L, x).coef_ != 0).astype(int)
         """
         n_samples, _ = X.shape
         y_pred = np.zeros((n_samples, self.n_sources_), dtype=int)
@@ -113,46 +116,23 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             decision: correlation of the signal from each parcel with the given
             data for each sample, dtype = DataFrame
         """
+        # ?? do the L has to be normalized for Lasso?
+        # L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
+
         n_samples, _ = X.shape
         L = self.lead_field
-        clf = linear_model.Lasso()
-        clf.fit(L, X.T).coef_
-        np.unique((clf.fit(L, X.T).coef_ != 0).astype(int))
-
-        import pdb; pdb.set_trace()
-
-        # ?? do the L has to be normalized for Lasso?
-        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
         parcel_indices = self.parcel_indices_leadfield
 
-        for idx in range(n_samples):
-            x = X.iloc[idx]
-            x = x / linalg.norm(x)  # normalize x to take correlations
+        clf = linear_model.LassoLarsCV()
+        model = MultiOutputRegressor(clf, n_jobs=-1)
+        model.fit(L, X.T)
 
-            corr = pd.DataFrame(
-                np.abs(L.T.dot(x))).groupby(parcel_indices).max().transpose()
-            if not idx:
-                correlation = corr
-            else:
-                correlation = correlation.append(corr)  # please run flake8
+        n_est = len(model.estimators_)
+        betas = np.empty([n_est, len(np.unique(parcel_indices))])
+        for idx in range(n_est):
+            est_coef = model.estimators_[idx].coef_
+            beta = pd.DataFrame(
+                np.abs(est_coef)).groupby(parcel_indices).max().transpose()
+            betas[idx, :] = beta
 
-        correlation.index = range(n_samples)
-
-        # in case 0 index is passed (which is of unused parcels, drop them)
-        if 0 in correlation:
-            correlation = correlation.drop(columns=0)
-        return correlation.values
-
-        """
-        L : leadfield
-        x : eeg
-        y : brain activity
-        physics : x = L y
-        lasso  argmin_beta || y - X beta ||^2 + \lambda || beta ||_1
-        this was standards stats notations
-        lasso  argmin_beta || x - L y ||^2 + \lambda || y ||_1
-        predict(x): return lasso.fit(L, x).coef_
-        decision_function(x): return np.abs(lasso.fit(L, x).coef_)
-        predict(x): return (lasso.fit(L, x).coef_ != 0).astype(int)
-    """
-
+        return betas
