@@ -26,7 +26,7 @@ data_dir = 'data_15_2'
 max_parcels = 15
 
 
-def learning_curve(X, y, model=None):
+def learning_curve(X, y, model=None, model_name=''):
     # runs given model (if None KNeighbours = 3 will be used) with the data
     # with different number of max sources and different number of brain
     # parcels and plots their score depending on number of samples used.
@@ -43,6 +43,7 @@ def learning_curve(X, y, model=None):
     if model is None:
         clf = KNeighborsClassifier(3)
         model = MultiOutputClassifier(clf, n_jobs=-1)
+        model_name = 'Kneighbours3'
 
     for n_samples_train in n_samples_grid:
         model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
@@ -56,6 +57,7 @@ def learning_curve(X, y, model=None):
 
     scores_all['n_parcels'] = n_parcels
     scores_all['max_sources'] = max_sources
+    scores_all['model_name'] = model_name
     scores_all['model'] = str(model)
 
     return scores_all
@@ -85,7 +87,7 @@ lc.fit(X_train, y_train)
 y_pred_test = lc.predict(X_test)
 y_pred_train = lc.predict(X_train)
 
-'''
+
 # calculating
 hl = hamming_loss(y_test, y_pred_test)
 js = jaccard_score(y_test, y_pred_test, average='samples')
@@ -105,7 +107,6 @@ scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
 scores = pd.DataFrame(scores)
 scores[['test_%s' % s for s in scoring]]
 print(scores.agg(['mean', 'std']))
-'''
 
 
 # Do learning curve for all models and all datasets
@@ -116,18 +117,30 @@ for idx, data_dir in enumerate(data_dirs):
     X, y, L, parcel_indices = load_data(data_dir)
 
     lc = LeadCorrelate(L, parcel_indices)
-    lasso = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
-    models = [None, lc, lasso]
+    lasso_lars = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
+    models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
+    #model_names = [None, 'lead correlate', 'lasso lars']
     # models = [None, lasso]
 
-    for model in models:
-        scores_all.append(learning_curve(X, y, model=model))
+    for name, model in models.items():
+        scores_all.append(learning_curve(X, y, model=model, model_name=name))
 
 scores_all = pd.concat(scores_all, axis=0)
+scores_all.to_pickle("scores_all.pkl")
 
-fig, ax = plt.subplots()
-for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model']):
-    ax.plot(df.n_samples_train, df.score_test, label=str(cond)[1:30])
-ax.set(xlabel='n_samples_train', ylabel='score')
-plt.legend()
+#fig, ax = plt.subplots()
+diff_parcels = scores_all['n_parcels'].unique()
+fig, ax = plt.subplots(nrows=len(diff_parcels), ncols=1)
+for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
+                                    'model']):
+    print(cond)
+    print(df)
+    sub = np.where(diff_parcels == cond[0])[0][0]
+    ax[sub].plot(df.n_samples_train, df.score_test,
+                 label=str(cond[1])+cond[2])
+for idx, parcel in enumerate(diff_parcels):
+    ax[idx].set(xlabel='n_samples_train', ylabel='score',
+                title='Parcels: '+str(parcel))
+    plt.legend()
+plt.tight_layout()
 plt.savefig('figs/learning_curves.png')
