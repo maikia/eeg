@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.multioutput import MultiOutputRegressor
@@ -116,23 +117,25 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             decision: correlation of the signal from each parcel with the given
             data for each sample, dtype = DataFrame
         """
-        # ?? do the L has to be normalized for Lasso?
-        # L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
-
         n_samples, _ = X.shape
         L = self.lead_field
+        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
         parcel_indices = self.parcel_indices_leadfield
 
-        clf = linear_model.LassoLarsCV()
-        model = MultiOutputRegressor(clf, n_jobs=-1)
-        model.fit(L, X.T)
+        for idx in range(n_samples):
+            x = X.iloc[idx]
+            x = x / linalg.norm(x)  # normalize x to take correlations
 
-        n_est = len(model.estimators_)
-        betas = np.empty([n_est, len(np.unique(parcel_indices))])
-        for idx in range(n_est):
-            est_coef = model.estimators_[idx].coef_
-            beta = pd.DataFrame(
-                np.abs(est_coef)).groupby(parcel_indices).max().transpose()
-            betas[idx, :] = beta
+            corr = pd.DataFrame(
+                np.abs(L.T.dot(x))).groupby(parcel_indices).max().transpose()
+            if not idx:
+                correlation = corr
+            else:
+                correlation = correlation.append(corr)  # please run flake8
 
-        return betas
+        correlation.index = range(n_samples)
+
+        # in case 0 index is passed (which is of unused parcels, drop them)
+        if 0 in correlation:
+            correlation = correlation.drop(columns=0)
+        return correlation.values
