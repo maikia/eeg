@@ -103,14 +103,57 @@ scores = pd.DataFrame(scores)
 scores[['test_%s' % s for s in scoring]]
 print(scores.agg(['mean', 'std']))
 
+
+##############################################################################
+
+
+from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.multioutput import MultiOutputRegressor
+
+
+class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
+    def __init__(self, lead_field, parcel_indices, model, n_jobs=1):
+        self.lead_field = lead_field
+        self.parcel_indices = parcel_indices
+        self.model = model
+        self.n_jobs = n_jobs
+
+    def fit(self, X, y):
+        return self
+
+    def predict(self, X):
+        return (self.decision_function(X) > 0).astype(int)
+
+    def decision_function(self, X):
+        model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
+        model.fit(self.lead_field, X.T)
+        n_est = len(model.estimators_)
+        betas = np.empty([n_est, len(np.unique(self.parcel_indices))])
+        for idx in range(n_est):
+            est_coef = np.abs(model.estimators_[idx].coef_)
+            beta = pd.DataFrame(
+                np.abs(est_coef)
+            ).groupby(self.parcel_indices).max().transpose()
+            betas[idx, :] = beta
+        return betas
+
+##############################################################################
+
+from sklearn import linear_model
+
 # Do learning curve for all models and all datasets
 scores_all = []
 # data_dirs = ['data_15_2', 'data_46_2']
 data_dirs = sorted(glob.glob('data_*'))
 for data_dir in data_dirs:
-    X, y, L, parcel_indices_leadfield = load_data(data_dir)
-    lc = LeadCorrelate(L, parcel_indices_leadfield)
-    for model in [None, lc]:
+    X, y, L, parcel_indices = load_data(data_dir)
+
+    lc = LeadCorrelate(L, parcel_indices)
+    lasso = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
+    # models = [None, lc, lasso]
+    models = [None, lasso]
+
+    for model in models:
         scores_all.append(learning_curve(X, y, model=model))
 
 scores_all = pd.concat(scores_all, axis=0)
