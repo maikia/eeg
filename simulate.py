@@ -157,11 +157,12 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 # same variables
-n_parcels = 50  # number of parcels per hemisphere
+n_parcels = 20  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
-random_state = 10
+random_state = 42
 hemi = 'both'
 subject = 'sample'
+# subject = 'CC110033'
 n_samples = 1000
 n_parcels_max = 3
 
@@ -169,16 +170,27 @@ n_parcels_max = 3
 data_path = mne.datasets.sample.data_path()
 subjects_dir = os.path.join(data_path, 'subjects')
 
-parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi,
+if not subject == 'sample':
+    data_path = 'leadfields'
+
+# The parcelation is done on the average brain and should be morphed to the
+# used subjects brain later
+# prepare parcels on the fs average brain, then morph them to the subject
+# parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi,
+#                                n_parcels=n_parcels,
+#                                random_state=random_state)
+# fsaverage_data_path = mne.datasets.fetch_fsaverage()
+subjects_dir = os.path.join(data_path, 'subjects')
+parcels, cms = prepare_parcels('fsaverage', subjects_dir, hemi=hemi,
                                n_parcels=n_parcels,
-                               random_state=42)
+                               random_state=random_state)
 parcels_flat = [item for sublist in parcels for item in sublist]
 parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
 
 if visualize:
-    visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
+    visualize_brain('fsaverage', hemi, 'random' + str(n_parcels), subjects_dir,
                     parcels_flat)
 
 
