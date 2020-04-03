@@ -185,6 +185,11 @@ parcels, cms = prepare_parcels('fsaverage', subjects_dir, hemi=hemi,
                                n_parcels=n_parcels,
                                random_state=random_state)
 parcels_flat = [item for sublist in parcels for item in sublist]
+
+# morph labels to the subject we are using
+parcels_flat = mne.morph_labels(parcels_flat, subject, 'fsaverage',
+                                subjects_dir, 'white')
+
 parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
 
