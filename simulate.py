@@ -82,52 +82,27 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
 
 
 # @mem.cache
-def init_signal(parcels, cms, hemi, n_parcels_max=3, random_state=None,
+def init_signal(parcels, n_parcels_max=3, random_state=None,
                 source_at_cm=False):
     '''
-    source_at_cm: the source will always be center of mass of the parcel
     '''
-    # randomly choose how many parcels will be activated, left or right
-    # hemisphere and exact parcels
+    # randomly choose how many parcels will be activated between 1 and
+    # n_parcels_max and which index at the parcel
     rng = check_random_state(random_state)
-
-    if hemi == 'both':
-        parcels_lh, parcels_rh = parcels
-        cm_lh, cm_rh = cms
-    elif hemi == 'rh':
-        [parcels_rh] = parcels
-        [cm_rh] = cms
-    elif hemi == 'lh':
-        [parcels_lh] = parcels
-        [cm_lh] = cms
 
     n_parcels = rng.randint(n_parcels_max, size=1)[0] + 1
     to_activate = []
     parcels_selected = []
 
     # do this so that the same label is not selected twice
-    deck_lh = list(rng.permutation(len(parcels_lh)))
-    deck_rh = list(rng.permutation(len(parcels_rh)))
+    deck = list(rng.permutation(len(parcels)))
+    # deck_rh = list(rng.permutation(len(parcels_rh)))
     for idx in range(n_parcels):
-        if hemi == 'both':
-            hemi_selected = ['lh', 'rh'][rng.randint(2, size=1)[0]]
-        else:
-            hemi_selected = hemi
+        parcel_selected = deck.pop()
+        parcel_used = parcels[parcel_selected]
+        l1_source = parcels[parcel_selected].copy()
+        l1_source.vertices = [rng.choice(parcel_used.vertices)]
 
-        if hemi_selected == 'lh':
-            parcel_selected = deck_lh.pop()
-            l1_source = parcels_lh[parcel_selected].copy()
-            if source_at_cm:
-                l1_source.vertices = [cm_lh[parcel_selected]]
-            parcel_used = parcels_lh[parcel_selected]
-        elif hemi_selected == 'rh':
-            parcel_selected = deck_rh.pop()
-            l1_source = parcels_rh[parcel_selected].copy()
-            if source_at_cm:
-                l1_source.vertices = [cm_rh[parcel_selected]]
-            parcel_used = parcels_rh[parcel_selected]
-        if not source_at_cm:
-            l1_source.vertices = [rng.choice(parcel_used.vertices)]
         to_activate.append(l1_source)
         parcels_selected.append(parcel_used)
 
@@ -163,7 +138,7 @@ random_state = 42
 hemi = 'both'
 subject = 'sample'
 # subject = 'CC110033'
-n_samples = 1000
+n_samples = 100
 n_parcels_max = 3
 
 # Here we are creating the directories/files for left and right hemisphere
@@ -195,7 +170,7 @@ parcel_names = np.array(parcel_names)
 
 
 if visualize:
-    visualize_brain('fsaverage', hemi, 'random' + str(n_parcels), subjects_dir,
+    visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
                     parcels_flat)
 
 
@@ -214,7 +189,7 @@ seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
 
 train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
-    delayed(init_signal)(parcels, cms, hemi, n_parcels_max, seed,
+    delayed(init_signal)(parcels_flat, n_parcels_max, seed,
                          source_at_cm=False)
     for seed in tqdm(seeds)
 )
