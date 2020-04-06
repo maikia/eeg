@@ -16,6 +16,9 @@ from tqdm import tqdm
 from simulation.parcels import find_centers_of_mass
 from simulation.raw_signal import generate_signal
 from simulation.parcels import make_random_parcellation
+
+import config
+
 if os.environ.get('DISPLAY'):  # display exists
     from simulation.plot_signal import visualize_brain
     visualize = True
@@ -82,8 +85,9 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
 
 
 # @mem.cache
-def init_signal(parcels, n_parcels_max=3, random_state=None,
-                source_at_cm=False):
+def init_signal(parcels, raw_fname, fwd_fname, subject,
+                n_parcels_max=3, random_state=None, signal_type = 'eeg'
+                ):
     '''
     '''
     # randomly choose how many parcels will be activated between 1 and
@@ -107,13 +111,12 @@ def init_signal(parcels, n_parcels_max=3, random_state=None,
         parcels_selected.append(parcel_used)
 
     # activate selected parcels
-    events, _, raw = generate_signal(data_path, subject,
-                                     parcels=to_activate)
+    events, _, raw = generate_signal(raw_fname, fwd_fname, subject,
+                                     parcels=to_activate,
+                                     signal_type=signal_type)
 
     evoked = mne.Epochs(raw, events, tmax=0.3).average()
     data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
-    # visualize_brain(subject, hemi, 'random' + str(n), subjects_dir,
-    #                parcels_selected)
 
     names_parcels_selected = [parcel.name for parcel in parcels_selected]
     return data, names_parcels_selected, to_activate
@@ -137,24 +140,28 @@ n_parcels = 20  # number of parcels per hemisphere
 random_state = 42
 hemi = 'both'
 subject = 'sample'
-# subject = 'CC110033'
-n_samples = 100
+# subject = 'CC120008'
+n_samples = 20
 n_parcels_max = 3
+signal_type = 'meg'
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
 subjects_dir = os.path.join(data_path, 'subjects')
 
-if not subject == 'sample':
-    data_path = 'leadfields'
+if subject == 'sample':
+    raw_fname = os.path.join(data_path, 'MEG', subject,
+                        subject + '_audvis_raw.fif')
+    fwd_fname = os.path.join(data_path, 'MEG', subject,
+                        subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+else:
+    raw_fname = config.get_raw_fname(subject)
+    fwd_fname = config.get_fwd_fname(subject)
 
-# The parcelation is done on the average brain and should be morphed to the
-# used subjects brain later
-# prepare parcels on the fs average brain, then morph them to the subject
-# parcels, cms = prepare_parcels(subject, subjects_dir, hemi=hemi,
-#                                n_parcels=n_parcels,
-#                                random_state=random_state)
-# fsaverage_data_path = mne.datasets.fetch_fsaverage()
+assert os.path.exists(raw_fname)
+assert os.path.exists(fwd_fname)
+
+# The parcelation is done on the average brain
 subjects_dir = os.path.join(data_path, 'subjects')
 parcels, cms = prepare_parcels('fsaverage', subjects_dir, hemi=hemi,
                                n_parcels=n_parcels,
@@ -163,11 +170,11 @@ parcels_flat = [item for sublist in parcels for item in sublist]
 
 # morph labels to the subject we are using
 parcels_flat = mne.morph_labels(parcels_flat, subject, 'fsaverage',
-                                subjects_dir, 'white')
+                                subjects_dir,
+                                'white')
 
 parcel_names = [parcel.name for parcel in parcels_flat]
 parcel_names = np.array(parcel_names)
-
 
 if visualize:
     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
@@ -189,8 +196,8 @@ seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
 
 train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
-    delayed(init_signal)(parcels_flat, n_parcels_max, seed,
-                         source_at_cm=False)
+    delayed(init_signal)(parcels_flat, raw_fname, fwd_fname, subject,
+                         n_parcels_max, seed, signal_type)
     for seed in tqdm(seeds)
 )
 
@@ -215,7 +222,7 @@ print(str(len(df)), ' samples were saved')
 
 # Visualize
 fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-info = mne.read_evokeds(fname)[0].pick('eeg').info
+info = mne.read_evokeds(fname)[0].pick(signal_type).info
 evoked = mne.EvokedArray(df.values.T, info, tmin=0)
 evoked.plot_topomap()
 
@@ -229,8 +236,12 @@ fwd = mne.read_forward_solution(fwd_fname)
 fwd = mne.convert_forward_solution(fwd, force_fixed=True)
 lead_field = fwd['sol']['data']
 
-picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
-lead_field = lead_field[picks_eeg, :]
+if signal_type == 'eeg':
+    picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
+    lead_field = lead_field[picks_eeg, :]
+elif signal_type == 'meg':
+    picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False, exclude=[])
+    lead_field = lead_field[picks_meg, :]
 
 # now we make a vector of size n_vertices for each surface of cortex
 # hemisphere and put a int for each vertex that says it which label
