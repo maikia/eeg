@@ -86,7 +86,7 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
 
 # @mem.cache
 def init_signal(parcels, raw_fname, fwd_fname, subject,
-                n_parcels_max=3, random_state=None, signal_type = 'eeg'
+                n_parcels_max=3, random_state=None, signal_type='eeg'
                 ):
     '''
     '''
@@ -151,9 +151,9 @@ subjects_dir = os.path.join(data_path, 'subjects')
 
 if subject == 'sample':
     raw_fname = os.path.join(data_path, 'MEG', subject,
-                        subject + '_audvis_raw.fif')
+                             subject + '_audvis_raw.fif')
     fwd_fname = os.path.join(data_path, 'MEG', subject,
-                        subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+                             subject + '_audvis-meg-eeg-oct-6-fwd.fif')
 else:
     raw_fname = config.get_raw_fname(subject)
     fwd_fname = config.get_fwd_fname(subject)

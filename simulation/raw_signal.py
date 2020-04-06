@@ -1,5 +1,3 @@
-import os.path as op
-
 import numpy as np
 import mne
 
