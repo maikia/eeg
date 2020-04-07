@@ -1,5 +1,6 @@
 import os
 
+import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import pickle
@@ -26,7 +27,7 @@ if os.environ.get('DISPLAY'):  # display exists
 else:
     # running on the server, no display
     visualize = False
-    N_JOBS = -1
+    N_JOBS = 1
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -139,11 +140,11 @@ n_parcels = 20  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
 random_state = 42
 hemi = 'both'
-subject = 'sample'
-# subject = 'CC120008'
+# subject = 'sample'
+subject = 'CC120008'
 n_samples = 20
 n_parcels_max = 3
-signal_type = 'meg'
+signal_type = 'meg' # 'eeg', 'meg', 'mag' or 'grad'
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -208,7 +209,8 @@ data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
 df = pd.DataFrame(signal_list, columns=list(data_labels))
 target = targets_to_sparse(target_list, parcel_names)
 
-data_dir_specific = 'data_' + str(len_parcels_flat) + '_' + str(n_parcels_max)
+case_specific = subject + '_' + str(len_parcels_flat) + '_' + str(n_parcels_max)
+data_dir_specific = 'data_' + case_specific
 if not os.path.isdir(data_dir_specific):
     os.mkdir(data_dir_specific)
 
@@ -221,17 +223,17 @@ save_npz(os.path.join(data_dir_specific, 'target.npz'), target)
 print(str(len(df)), ' samples were saved')
 
 # Visualize
+fig, axes = plt.subplots(figsize=(7.5, 2.5), ncols=5)
 fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
 info = mne.read_evokeds(fname)[0].pick(signal_type).info
 evoked = mne.EvokedArray(df.values.T, info, tmin=0)
-evoked.plot_topomap()
+evoked.plot_topomap(axes=axes)
+plt.savefig(os.path.join('figs', 'evoked' + case_specific + '.png'))
 
 # data to give to the participants:
 # labels with their names and vertices: parcels
 
 # reading forward matrix and saving
-fwd_fname = os.path.join(data_path, 'MEG', subject,
-                         subject + '_audvis-meg-eeg-oct-6-fwd.fif')
 fwd = mne.read_forward_solution(fwd_fname)
 fwd = mne.convert_forward_solution(fwd, force_fixed=True)
 lead_field = fwd['sol']['data']
@@ -241,6 +243,10 @@ if signal_type == 'eeg':
     lead_field = lead_field[picks_eeg, :]
 elif signal_type == 'meg':
     picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False, exclude=[])
+    lead_field = lead_field[picks_meg, :]
+elif signal_type == 'mag' or signal_type == 'grad':
+    picks_meg = mne.pick_types(fwd['info'], meg=signal_type,
+                               eeg=False, exclude=[])
     lead_field = lead_field[picks_meg, :]
 
 # now we make a vector of size n_vertices for each surface of cortex

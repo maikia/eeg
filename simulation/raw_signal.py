@@ -6,15 +6,14 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
                     signal_type='eeg'):
     signal_len = 10
     # Generate the signal
-    # First, we get an info structure from the test subject.
-    # raw_fname = op.join(data_path, 'MEG', subject,
-    #                    subject + '_audvis_raw.fif')
     info = mne.io.read_info(raw_fname)
     if signal_type == 'eeg':
         sel = mne.pick_types(info, meg=False, eeg=True, stim=True, exclude=[])
     elif signal_type == 'meg':
-        # TODO: take either only magnetometers or gradiometers data
         sel = mne.pick_types(info, meg=True, eeg=False, stim=True, exclude=[])
+    elif signal_type == 'mag' or signal_type == 'grad':
+        sel = mne.pick_types(info, meg=signal_type,
+                             eeg=False, stim=True, exclude=[])
     info = mne.pick_info(info, sel)
     tstep = 1. / info['sfreq']
 
