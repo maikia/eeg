@@ -21,7 +21,7 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
 
-plot_data = False
+plot_data = True
 data_dir = 'data_CC120008_26_3'
 max_parcels = 15
 
@@ -42,12 +42,15 @@ def learning_curve(X, y, model=None, model_name=''):
 
     if model is None:
         clf = KNeighborsClassifier(3)
-        model = MultiOutputClassifier(clf, n_jobs=-1)
+        model = MultiOutputClassifier(clf, n_jobs=1)
         model_name = 'Kneighbours3'
 
     for n_samples_train in n_samples_grid:
         model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
-        score = model.score(X_test, y_test)
+        try:
+            score = model.score(X_test, y_test)
+        except:
+            import pdb; pdb.set_trace()
         scores_all = scores_all.append({'n_samples_train': n_samples_train,
                                         'score_test': score},
                                        ignore_index=True)
@@ -66,21 +69,22 @@ def learning_curve(X, y, model=None, model_name=''):
 def load_data(data_dir):
     lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
     parcel_indices_leadfield = lead_matrix['parcel_indices']
+    signal_type = lead_matrix['signal_type']
     L = lead_matrix['lead_field']
 
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
-    return X, y, L, parcel_indices_leadfield
+    return X, y, L, parcel_indices_leadfield, signal_type
 
 
-X, y, L, parcel_indices_leadfield = load_data(data_dir)
+X, y, L, parcel_indices_leadfield, signal_type = load_data(data_dir)
 
 if plot_data:
-    plot_sources_at_activation(X, y)
+    plot_sources_at_activation(X, y, signal_type)
 
 X_train, X_test, y_train, y_test = \
     train_test_split(X, y, test_size=0.2, random_state=42)
-
+'''
 lc = LeadCorrelate(L, parcel_indices_leadfield)
 lc.fit(X_train, y_train)
 
@@ -107,15 +111,15 @@ scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
 scores = pd.DataFrame(scores)
 scores[['test_%s' % s for s in scoring]]
 print(scores.agg(['mean', 'std']))
-
+'''
 
 # Do learning curve for all models and all datasets
 scores_all = []
 
-data_dirs = ['data_CC120008_26_3'] # sorted(glob.glob('data_*'))
+data_dirs = sorted(glob.glob('data_*'))
 for idx, data_dir in enumerate(data_dirs):
     print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
-    X, y, L, parcel_indices = load_data(data_dir)
+    X, y, L, parcel_indices, signal_type = load_data(data_dir)
 
     lc = LeadCorrelate(L, parcel_indices)
     lasso_lars = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
@@ -129,7 +133,6 @@ for idx, data_dir in enumerate(data_dirs):
 scores_all = pd.concat(scores_all, axis=0)
 scores_all.to_pickle("scores_all.pkl")
 
-#fig, ax = plt.subplots()
 diff_parcels = scores_all['n_parcels'].unique()
 fig, ax = plt.subplots(nrows=len(diff_parcels), ncols=1)
 for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',

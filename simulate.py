@@ -27,7 +27,7 @@ if os.environ.get('DISPLAY'):  # display exists
 else:
     # running on the server, no display
     visualize = False
-    N_JOBS = 1
+    N_JOBS = -1
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -142,9 +142,9 @@ random_state = 42
 hemi = 'both'
 # subject = 'sample'
 subject = 'CC120008'
-n_samples = 20
+n_samples = 2000
 n_parcels_max = 3
-signal_type = 'meg' # 'eeg', 'meg', 'mag' or 'grad'
+signal_type = 'grad' # 'eeg', 'meg', 'mag' or 'grad'
 
 # Here we are creating the directories/files for left and right hemisphere
 data_path = mne.datasets.sample.data_path()
@@ -279,4 +279,5 @@ parcel_indices_l = parcel_indices_l[parcel_indices_l != 0]
 assert len(parcel_indices_l) == lead_field.shape[1]
 
 np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
-         lead_field=lead_field, parcel_indices=parcel_indices_l)
+         lead_field=lead_field, parcel_indices=parcel_indices_l,
+         signal_type=signal_type)

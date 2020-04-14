@@ -30,16 +30,18 @@ def visualize_brain(subject, hemi, annot_name, subjects_dir, parcels_selected,
     brain.save_image(os.path.join(fig_dir, 'brain_' + annot_name + ext))
 
 
-def plot_sources_at_activation(X, y, fig_dir='figs', ext='.png'):
+def plot_sources_at_activation(X, y, signal_type, fig_dir='figs', ext='.png'):
     # plots each parcel (careful if too many parcels) at the moment of the
     # activation indicated by y == 1 at 5 different samples
+    # signal type must be either 'eeg', 'meg', 'mag' or 'grad'
 
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
     data_path = mne.datasets.sample.data_path()
     fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-    info = mne.read_evokeds(fname)[0].pick('eeg').info
+
+    info = mne.read_evokeds(fname)[0].pick(signal_type).info
 
     n_classes = y.shape[1]
     fig, axes = plt.subplots(5, n_classes, figsize=(16, 4))
