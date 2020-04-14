@@ -21,8 +21,8 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
 
-plot_data = True
-data_dir = 'data_15_2'
+plot_data = False
+data_dir = 'data_CC120008_26_3'
 max_parcels = 15
 
 
@@ -111,7 +111,8 @@ print(scores.agg(['mean', 'std']))
 
 # Do learning curve for all models and all datasets
 scores_all = []
-data_dirs = sorted(glob.glob('data_*'))
+
+data_dirs = ['data_CC120008_26_3'] # sorted(glob.glob('data_*'))
 for idx, data_dir in enumerate(data_dirs):
     print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
     X, y, L, parcel_indices = load_data(data_dir)
@@ -136,11 +137,20 @@ for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
     print(cond)
     print(df)
     sub = np.where(diff_parcels == cond[0])[0][0]
-    ax[sub].plot(df.n_samples_train, df.score_test,
-                 label=str(cond[1])+cond[2])
+
+    if type(ax) == np.ndarray:
+        ax[sub].plot(df.n_samples_train, df.score_test,
+                     label=str(cond[1])+cond[2])
+    else:
+        ax.plot(df.n_samples_train, df.score_test,
+                     label=str(cond[1])+cond[2])
 for idx, parcel in enumerate(diff_parcels):
-    ax[idx].set(xlabel='n_samples_train', ylabel='score',
-                title='Parcels: '+str(parcel))
+    if type(ax) == np.ndarray:
+        ax[idx].set(xlabel='n_samples_train', ylabel='score',
+                    title='Parcels: '+str(parcel))
+    else:
+        ax.set(xlabel='n_samples_train', ylabel='score',
+                    title='Parcels: '+str(parcel))
     plt.legend()
 plt.tight_layout()
 plt.savefig('figs/learning_curves.png')
