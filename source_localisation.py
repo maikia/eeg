@@ -27,12 +27,13 @@ if os.environ.get('DISPLAY'):  # display exists
 else:
     # running on the server, no display
     visualize_data = False
-    N_JOBS = -1
+    N_JOBS = 1
 
 
 plot_data = True
-# data_dir = 'data_CC120008_26_3'
-data_dir = 'data_sample_26_3'
+data_dir = 'data_CC120008_26_3'
+# data_dir = 'data_sample_26_3' # 'all' if all directories starting with 'data_'
+                              # should be simulated
 
 def learning_curve(X, y, model=None, model_name=''):
     # runs given model (if None KNeighbours = 3 will be used) with the data
@@ -120,8 +121,11 @@ print(scores.agg(['mean', 'std']))
 # Do learning curve for all models and all datasets
 scores_all = []
 
-# data_dirs = sorted(glob.glob('data_*'))
-data_dirs = [data_dir]
+if data_dir == 'all':
+    data_dirs = sorted(glob.glob('data_*'))
+else:
+    data_dirs = [data_dir]
+
 for idx, data_dir in enumerate(data_dirs):
     print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
     X, y, L, parcel_indices, signal_type = load_data(data_dir)
