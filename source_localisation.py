@@ -81,6 +81,7 @@ def load_data(data_dir):
 
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
+    X /= np.max(X)  # Scale data to avoid tiny numbers
     return X, y, L, parcel_indices_leadfield, signal_type
 
 
@@ -134,13 +135,16 @@ for idx, data_dir in enumerate(data_dirs):
     X, y, L, parcel_indices, signal_type = load_data(data_dir)
 
     lc = LeadCorrelate(L, parcel_indices)
-    lasso_lars = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
+    lasso_lars = SparseRegressor(L, parcel_indices,
+                                 linear_model.LassoLarsCV(max_iter=10, n_jobs=N_JOBS))
     lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
-    models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
-    # models = {'lasso lars': lasso_lars}
+    # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
+    # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
+    models = {'lasso lars': lasso_lars}
 
     for name, model in models.items():
         scores_all.append(learning_curve(X, y, model=model, model_name=name))
+
 
 scores_all = pd.concat(scores_all, axis=0)
 scores_all.to_pickle("scores_all.pkl")
@@ -157,6 +161,7 @@ for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
     else:
         ax.plot(df.n_samples_train, df.score_test,
                 label=str(cond[1])+cond[2])
+
 for idx, parcel in enumerate(diff_parcels):
     if type(ax) == np.ndarray:
         ax[idx].set(xlabel='n_samples_train', ylabel='score',

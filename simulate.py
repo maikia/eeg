@@ -140,8 +140,8 @@ n_parcels = 20  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
 random_state = 42
 hemi = 'both'
-# subject = 'sample'
-subject = 'CC120008'
+subject = 'sample'
+# subject = 'CC120008'
 n_samples = 2000
 n_parcels_max = 3
 signal_type = 'grad' # 'eeg', 'meg', 'mag' or 'grad'
