@@ -31,9 +31,11 @@ else:
 
 
 plot_data = True
-data_dir = 'data_CC120008_26_3'
-# data_dir = 'data_sample_26_3' # 'all' if all directories starting with 'data_'
-                              # should be simulated
+# data_dir = 'all' if all directories starting with 'data_' should be simulated
+# otherwise give name of the directory
+# e.g data_dir = 'data_CC120008_26_3'
+data_dir = 'data_sample_26_3'
+
 
 def learning_curve(X, y, model=None, model_name=''):
     # runs given model (if None KNeighbours = 3 will be used) with the data
@@ -80,6 +82,7 @@ def load_data(data_dir):
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
     return X, y, L, parcel_indices_leadfield, signal_type
+
 
 '''
 X, y, L, parcel_indices_leadfield, signal_type = load_data(data_dir)
@@ -153,14 +156,14 @@ for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
                      label=str(cond[1])+cond[2])
     else:
         ax.plot(df.n_samples_train, df.score_test,
-                     label=str(cond[1])+cond[2])
+                label=str(cond[1])+cond[2])
 for idx, parcel in enumerate(diff_parcels):
     if type(ax) == np.ndarray:
         ax[idx].set(xlabel='n_samples_train', ylabel='score',
                     title='Parcels: '+str(parcel))
     else:
         ax.set(xlabel='n_samples_train', ylabel='score',
-                    title='Parcels: '+str(parcel))
+               title='Parcels: '+str(parcel))
     plt.legend()
 plt.tight_layout()
 plt.savefig('figs/learning_curves.png')
