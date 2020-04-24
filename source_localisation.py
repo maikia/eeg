@@ -13,18 +13,26 @@ from sklearn.neighbors import KNeighborsClassifier
 from simulation.lead_correlate import LeadCorrelate
 from simulation.sparse_regressor import SparseRegressor
 import simulation.metrics as met
-from simulation.plot_signal import plot_sources_at_activation
+
 
 from sklearn.metrics import hamming_loss
 from sklearn.metrics import jaccard_score
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
+if os.environ.get('DISPLAY'):  # display exists
+    from simulation.plot_signal import plot_sources_at_activation
+    visualize_data = True
+    N_JOBS = 1
+else:
+    # running on the server, no display
+    visualize_data = False
+    N_JOBS = -1
+
 
 plot_data = True
-data_dir = 'data_CC120008_26_3'
-max_parcels = 15
-
+# data_dir = 'data_CC120008_26_3'
+data_dir = 'data_sample_26_3'
 
 def learning_curve(X, y, model=None, model_name=''):
     # runs given model (if None KNeighbours = 3 will be used) with the data
@@ -42,19 +50,15 @@ def learning_curve(X, y, model=None, model_name=''):
 
     if model is None:
         clf = KNeighborsClassifier(3)
-        model = MultiOutputClassifier(clf, n_jobs=1)
+        model = MultiOutputClassifier(clf, n_jobs=N_JOBS)
         model_name = 'Kneighbours3'
 
     for n_samples_train in n_samples_grid:
         model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
-        try:
-            score = model.score(X_test, y_test)
-        except:
-            import pdb; pdb.set_trace()
+        score = model.score(X_test, y_test)
         scores_all = scores_all.append({'n_samples_train': n_samples_train,
                                         'score_test': score},
                                        ignore_index=True)
-
     n_parcels = int(y_train.shape[1])
     max_sources = int(y_train.sum(axis=1).max())
 
@@ -76,15 +80,15 @@ def load_data(data_dir):
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
     return X, y, L, parcel_indices_leadfield, signal_type
 
-
+'''
 X, y, L, parcel_indices_leadfield, signal_type = load_data(data_dir)
 
-if plot_data:
+if plot_data and visualize_data:
     plot_sources_at_activation(X, y, signal_type)
 
 X_train, X_test, y_train, y_test = \
     train_test_split(X, y, test_size=0.2, random_state=42)
-'''
+
 lc = LeadCorrelate(L, parcel_indices_leadfield)
 lc.fit(X_train, y_train)
 
@@ -116,16 +120,17 @@ print(scores.agg(['mean', 'std']))
 # Do learning curve for all models and all datasets
 scores_all = []
 
-data_dirs = sorted(glob.glob('data_*'))
+# data_dirs = sorted(glob.glob('data_*'))
+data_dirs = [data_dir]
 for idx, data_dir in enumerate(data_dirs):
     print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
     X, y, L, parcel_indices, signal_type = load_data(data_dir)
 
     lc = LeadCorrelate(L, parcel_indices)
     lasso_lars = SparseRegressor(L, parcel_indices, linear_model.LassoLarsCV())
+    lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
     models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
-    #model_names = [None, 'lead correlate', 'lasso lars']
-    # models = [None, lasso]
+    # models = {'lasso lars': lasso_lars}
 
     for name, model in models.items():
         scores_all.append(learning_curve(X, y, model=model, model_name=name))
@@ -137,8 +142,6 @@ diff_parcels = scores_all['n_parcels'].unique()
 fig, ax = plt.subplots(nrows=len(diff_parcels), ncols=1)
 for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
                                     'model']):
-    print(cond)
-    print(df)
     sub = np.where(diff_parcels == cond[0])[0][0]
 
     if type(ax) == np.ndarray:
