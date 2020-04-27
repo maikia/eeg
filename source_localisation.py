@@ -27,14 +27,15 @@ if os.environ.get('DISPLAY'):  # display exists
 else:
     # running on the server, no display
     visualize_data = False
-    N_JOBS = 1
+    N_JOBS = -1
 
 
 plot_data = True
 # data_dir = 'all' if all directories starting with 'data_' should be simulated
 # otherwise give name of the directory
 # e.g data_dir = 'data_CC120008_26_3'
-data_dir = 'data_sample_26_3'
+data_dir = 'data_grad_sample_26_3'
+signal_type = 'grad'
 
 
 def learning_curve(X, y, model=None, model_name=''):
@@ -126,49 +127,65 @@ print(scores.agg(['mean', 'std']))
 scores_all = []
 
 if data_dir == 'all':
-    data_dirs = sorted(glob.glob('data_*'))
+    data_dir = 'data_' + signal_type + '_*'
+    data_dirs = sorted(glob.glob(data_dir))
 else:
     data_dirs = [data_dir]
 
 for idx, data_dir in enumerate(data_dirs):
     print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
-    X, y, L, parcel_indices, signal_type = load_data(data_dir)
+    subject = data_dir.split('_')[2]
+    X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
+    assert signal_type == signal_type_data
 
     lc = LeadCorrelate(L, parcel_indices)
     lasso_lars = SparseRegressor(L, parcel_indices,
-                                 linear_model.LassoLarsCV(max_iter=10, n_jobs=N_JOBS))
+                                 linear_model.LassoLarsCV(max_iter=10,
+                                 n_jobs=N_JOBS))
     lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
     # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
     # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-    models = {'lasso lars': lasso_lars}
+    models = {'': None}
+
 
     for name, model in models.items():
-        scores_all.append(learning_curve(X, y, model=model, model_name=name))
-
+        score = learning_curve(X, y, model=model, model_name=name)
+        score['subject'] = subject
+        scores_all.append(score)
 
 scores_all = pd.concat(scores_all, axis=0)
 scores_all.to_pickle("scores_all.pkl")
 
-diff_parcels = scores_all['n_parcels'].unique()
-fig, ax = plt.subplots(nrows=len(diff_parcels), ncols=1)
-for cond, df in scores_all.groupby(['n_parcels', 'max_sources', 'model_name',
-                                    'model']):
-    sub = np.where(diff_parcels == cond[0])[0][0]
+if plot_data:
+    # plot the results from all the calculated data
+    def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
+        diff_parcels = scores_all['n_parcels'].unique()
+        fig, ax = plt.subplots(nrows=len(diff_parcels), ncols=1)
+        for cond, df in scores_all.groupby(['n_parcels', 'max_sources',
+                                            'model_name', 'model']):
+            sub = np.where(diff_parcels == cond[0])[0][0]
 
-    if type(ax) == np.ndarray:
-        ax[sub].plot(df.n_samples_train, df.score_test,
-                     label=str(cond[1])+cond[2])
-    else:
-        ax.plot(df.n_samples_train, df.score_test,
-                label=str(cond[1])+cond[2])
-
-for idx, parcel in enumerate(diff_parcels):
-    if type(ax) == np.ndarray:
-        ax[idx].set(xlabel='n_samples_train', ylabel='score',
+            if type(ax) == np.ndarray:
+                ax[sub].plot(df.n_samples_train, df.score_test,
+                             label=str(cond[1])+cond[2])
+            else:
+                ax.plot(df.n_samples_train, df.score_test,
+                             label=str(cond[1])+cond[2])
+        for idx, parcel in enumerate(diff_parcels):
+            if type(ax) == np.ndarray:
+                ax[idx].set(xlabel='n_samples_train', ylabel='score',
+                            title='Parcels: '+str(parcel))
+            else:
+                ax.set(xlabel='n_samples_train', ylabel='score',
                     title='Parcels: '+str(parcel))
-    else:
-        ax.set(xlabel='n_samples_train', ylabel='score',
-               title='Parcels: '+str(parcel))
-    plt.legend()
-plt.tight_layout()
-plt.savefig('figs/learning_curves.png')
+            plt.legend()
+        plt.tight_layout()
+        plt.savefig('figs/' + file_name + ext)
+
+    plot_scores(scores_all)
+    # plot the results for each subject separately
+    for subject in np.unique(scores_all['subject']):
+        scores = scores_all[scores_all['subject'] == subject]
+        plot_scores(scores, file_name = 'learning_curves_' + subject)
+
+
