@@ -76,7 +76,7 @@ def calc_froc(y_true, y_score):
     if classes.shape[0] != 2:
         raise ValueError("FROC is defined for binary classification only")
 
-    thresholds = np.unique(y_score)
+    thresholds, indicesList = np.unique(y_score, return_index=True)
 
     # sensitivity: true positive normalized by sum of all true
     # positives
@@ -87,7 +87,8 @@ def calc_froc(y_true, y_score):
     idx = 0
 
     signal = np.c_[y_score, y_true]
-    sorted_signal = signal[signal[:, 0].argsort(), :][::-1]
+    # take only those values which are unique at y_score
+    sorted_signal = signal[indicesList, :][::-1]
     for score, value in sorted_signal:
         t_est = sorted_signal[:, 0] >= score
 
