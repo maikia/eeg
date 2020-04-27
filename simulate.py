@@ -140,8 +140,11 @@ n_parcels = 20  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
 random_state = 42
 hemi = 'both'
-subject = 'sample'
-# subject = 'CC120008'
+# subject = 'sample'
+subject = 'CC120008'
+# subject = 'CC210314'
+# subject = 'CC320202'
+
 n_samples = 2000
 n_parcels_max = 3
 signal_type = 'grad' # 'eeg', 'meg', 'mag' or 'grad'
@@ -209,8 +212,12 @@ data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
 df = pd.DataFrame(signal_list, columns=list(data_labels))
 target = targets_to_sparse(target_list, parcel_names)
 
-case_specific = subject + '_' + str(len_parcels_flat) + '_' + str(n_parcels_max)
-data_dir_specific = 'data_' + case_specific
+case_specific = (signal_type + '_' + subject + '_' + str(len_parcels_flat) +
+                '_' + str(n_parcels_max))
+data_dir = 'data'
+data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
+if not os.path.isdir(data_dir):
+    os.mkdir(data_dir)
 if not os.path.isdir(data_dir_specific):
     os.mkdir(data_dir_specific)
 
