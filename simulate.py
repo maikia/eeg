@@ -136,7 +136,7 @@ def targets_to_sparse(target_list, parcel_names):
 
 
 def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
-                              random_state = 42):
+                              random_state=42):
     # The parcelation is done on the average brain
 
     parcels, cms = prepare_parcels('fsaverage', subjects_dir, hemi=hemi,
@@ -147,7 +147,7 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
 
 
 def simulate_for_subject(subject_name, data_path, parcels_subject,
-                         n_samples=2, n_parcels_max=3, signal_type='grad',
+                         n_samples=2000, n_parcels_max=3, signal_type='grad',
                          make_new=True):
     """ simulates the data for a given subject. The random parcellation is done
         on the average brain and then morphed to the subject given.
@@ -155,8 +155,8 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     Parameters
     ----------
     subject_name : string. Name of the subject: it can be either 'sample' or
-        one of the subjects for which the data is stored in the directories given
-        in config.py (raw, and fwd)
+        one of the subjects for which the data is stored in the directories
+        given in config.py (raw, and fwd)
     parcels_subject : list of parcels (usually morphed from fsaverage subject)
     n_samples : int, number of samples to be generated
     n_parcels_max : maximum of parcels activated (sources) in each
@@ -170,21 +170,38 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
 
     Returns
     -------
-    y : ndarray, shape (n_samples,)
+    data_dir : string, path to the data
         Returns an array of ones.
 
         """
 
-    hemi = 'both'
-    # check if the path already exists
+    data_dir = 'data'
+
+    # make all the paths
+    len_parcels = len(parcels_subject)
+    case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
+                     + '_' + str(n_parcels_max))
+    data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
+
+    # check if the data directory for the subject already exists
+    if not os.path.isdir(data_dir):
+        os.mkdir(data_dir)
+
+    if os.path.isdir(data_dir_specific) and not make_new:
+        # path exists, skip it
+        print('skipping existing directory: ' + data_dir_specific)
+        return data_dir_specific
+    elif not os.path.isdir(data_dir_specific):
+        os.mkdir(data_dir_specific)
+    assert os.path.exists(data_dir_specific)
+    print('working on ' + data_dir_specific)
 
     # Here we are creating the directories/files for left and right hemisphere
-
     if subject == 'sample':
         raw_fname = os.path.join(data_path, 'MEG', subject,
-                                subject + '_audvis_raw.fif')
+                                 subject + '_audvis_raw.fif')
         fwd_fname = os.path.join(data_path, 'MEG', subject,
-                                subject + '_audvis-meg-eeg-oct-6-fwd.fif')
+                                 subject + '_audvis-meg-eeg-oct-6-fwd.fif')
     else:
         raw_fname = config.get_raw_fname(subject)
         fwd_fname = config.get_fwd_fname(subject)
@@ -195,12 +212,16 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     # save label names with their corresponding vertices
     parcel_names = [parcel.name for parcel in parcels_subject]
     parcel_names = np.array(parcel_names)
-    len_parcels_flat = len(parcels_subject)
 
     parcel_vertices = {}
     for idx, parcel in enumerate(parcels_subject, 1):
         parcel_name = str(idx) + parcel.name[-3:]
         parcel_vertices[parcel_name] = parcel.vertices
+
+    with open(os.path.join(data_dir_specific,
+                           'labels.pickle'), 'wb') as outfile:
+        pickle.dump(parcel_vertices, outfile)
+    outfile.close()
 
     # prepare train and test data
     signal_list = []
@@ -208,10 +229,9 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     rng = np.random.RandomState(random_state)
     seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
-
     train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
         delayed(init_signal)(parcels_subject, raw_fname, fwd_fname, subject,
-                            n_parcels_max, seed, signal_type)
+                             n_parcels_max, seed, signal_type)
         for seed in tqdm(seeds)
     )
     signal_list, target_list, activated = zip(*train_data)
@@ -223,37 +243,27 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     df = pd.DataFrame(signal_list, columns=list(data_labels))
     target = targets_to_sparse(target_list, parcel_names)
 
-    case_specific = (signal_type + '_' + subject + '_' + str(len_parcels_flat) +
-                    '_' + str(n_parcels_max))
-    data_dir = 'data'
-    data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
-    if not os.path.isdir(data_dir):
-        os.mkdir(data_dir)
-    if not os.path.isdir(data_dir_specific):
-        os.mkdir(data_dir_specific)
-
-    with open(os.path.join(data_dir_specific, 'labels.pickle'), 'wb') as outfile:
-        pickle.dump(parcel_vertices, outfile)
-    outfile.close()
-
     df.to_csv(os.path.join(data_dir_specific, 'X.csv'), index=False)
     save_npz(os.path.join(data_dir_specific, 'target.npz'), target)
     print(str(len(df)), ' samples were saved')
 
+    # READ and SAVE LF
     # reading forward matrix and saving
     fwd = mne.read_forward_solution(fwd_fname)
     fwd = mne.convert_forward_solution(fwd, force_fixed=True)
     lead_field = fwd['sol']['data']
 
     if signal_type == 'eeg':
-        picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True, exclude=[])
+        picks_eeg = mne.pick_types(fwd['info'], meg=False, eeg=True,
+                                   exclude=[])
         lead_field = lead_field[picks_eeg, :]
     elif signal_type == 'meg':
-        picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False, exclude=[])
+        picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False,
+                                   exclude=[])
         lead_field = lead_field[picks_meg, :]
     elif signal_type == 'mag' or signal_type == 'grad':
         picks_meg = mne.pick_types(fwd['info'], meg=signal_type,
-                                eeg=False, exclude=[])
+                                   eeg=False, exclude=[])
         lead_field = lead_field[picks_meg, :]
 
     # now we make a vector of size n_vertices for each surface of cortex
@@ -279,27 +289,30 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
 
     assert len(parcel_indices_l) == lead_field.shape[1]
 
-    # Remove from parcel_indices and from the leadfield all the indices == 0 (not
-    # used by our brain)
+    # CLEAN UP
+    # Remove from parcel_indices and from the leadfield all the indices == 0
+    # (not used by our brain)
     lead_field = lead_field[:, parcel_indices_l != 0]
     parcel_indices_l = parcel_indices_l[parcel_indices_l != 0]
     assert len(parcel_indices_l) == lead_field.shape[1]
 
     np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
-            lead_field=lead_field, parcel_indices=parcel_indices_l,
-            signal_type=signal_type)
+             lead_field=lead_field, parcel_indices=parcel_indices_l,
+             signal_type=signal_type)
 
 
 # same variables
 n_parcels = 20  # number of parcels per hemisphere
 # (will be reduced by corpus callosum)
 random_state = 42
-plot_data = False # TODO: pass correct data
+hemi = 'both'
+plot_data = False  # TODO: pass correct data
 
 data_path = mne.datasets.sample.data_path()
 subjects_dir = os.path.join(data_path, 'subjects')
-parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir, n_parcels=n_parcels,
-                                         random_state=random_state)
+parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
+                                              n_parcels=n_parcels,
+                                              random_state=random_state)
 
 
 # subject = 'sample'
@@ -327,7 +340,7 @@ parcels_subject = mne.morph_labels(parcels_fsaverage, subject, 'fsaverage',
                                    subjects_dir,
                                    'white')
 
-simulate_for_subject(subject, data_path, parcels_subject)
+simulate_for_subject(subject, data_path, parcels_subject, make_new=False)
 
 if visualize and plot_data:
     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
@@ -335,10 +348,10 @@ if visualize and plot_data:
 
 if plot_data:
     # Visualize
+    # TODO set case_specific, df, signal_type, parcels_flat, hemi
     fig, axes = plt.subplots(figsize=(7.5, 2.5), ncols=5)
     fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
     info = mne.read_evokeds(fname)[0].pick(signal_type).info
     evoked = mne.EvokedArray(df.values.T, info, tmin=0)
     evoked.plot_topomap(axes=axes)
     plt.savefig(os.path.join('figs', 'evoked' + case_specific + '.png'))
-
