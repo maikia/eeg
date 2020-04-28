@@ -149,8 +149,18 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
 def simulate_for_subject(subject_name, data_path, parcels_subject,
                          n_samples=2000, n_parcels_max=3, signal_type='grad',
                          make_new=True):
-    """ simulates the data for a given subject. The random parcellation is done
-        on the average brain and then morphed to the subject given.
+    """ simulates the data for a given subject. It generates and saves the
+    following:
+    X.csv: data of the shape n_samples x n_electrodes
+    target.npz: sources activated at each sample. the number of sources is
+                [1, n_parcels_max]
+    lead_field.npz: consists of three types of information:
+        "lead_field": matrix of shape [n_electrodes x n_vertices],
+        "parcel_indices": indicates to which vertices the signal corresponds
+        to, shape: [n_verties],
+        "signal_type": string indicating for which signal type the data was
+        generated for
+    labels.pickle: vertices belonging to each parcel
 
     Parameters
     ----------
@@ -177,6 +187,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
 
     data_dir = 'data'
 
+    # PATHS
     # make all the paths
     len_parcels = len(parcels_subject)
     case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
@@ -209,6 +220,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     assert os.path.exists(raw_fname)
     assert os.path.exists(fwd_fname)
 
+    # PREPARE PARCELS
     # save label names with their corresponding vertices
     parcel_names = [parcel.name for parcel in parcels_subject]
     parcel_names = np.array(parcel_names)
@@ -223,6 +235,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
         pickle.dump(parcel_vertices, outfile)
     outfile.close()
 
+    # SIMULATE DATA
     # prepare train and test data
     signal_list = []
     target_list = []
@@ -236,8 +249,10 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     )
     signal_list, target_list, activated = zip(*train_data)
 
-    # data to give to the participants:
-    # labels with their names and vertices: parcels
+    assert all([len(i) <= n_parcels_max for i in target_list])
+    assert all([len(i) >= 1 for i in target_list])
+
+    # SAVE THE DATA (simulated data and the target: source parcels)
     signal_list = np.array(signal_list)
     data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
     df = pd.DataFrame(signal_list, columns=list(data_labels))
@@ -247,8 +262,8 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     save_npz(os.path.join(data_dir_specific, 'target.npz'), target)
     print(str(len(df)), ' samples were saved')
 
-    # READ and SAVE LF
-    # reading forward matrix and saving
+    # READ LF
+    # reading forward matrix
     fwd = mne.read_forward_solution(fwd_fname)
     fwd = mne.convert_forward_solution(fwd, force_fixed=True)
     lead_field = fwd['sol']['data']
@@ -266,6 +281,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
                                    eeg=False, exclude=[])
         lead_field = lead_field[picks_meg, :]
 
+    # FIND VERTICES FOR LF
     # now we make a vector of size n_vertices for each surface of cortex
     # hemisphere and put a int for each vertex that says it which label
     # it belongs to.
@@ -289,7 +305,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
 
     assert len(parcel_indices_l) == lead_field.shape[1]
 
-    # CLEAN UP
+    # CLEAN UP AND SAVE LF
     # Remove from parcel_indices and from the leadfield all the indices == 0
     # (not used by our brain)
     lead_field = lead_field[:, parcel_indices_l != 0]
@@ -314,33 +330,18 @@ parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
                                               n_parcels=n_parcels,
                                               random_state=random_state)
 
+subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101', 'CC110187',
+                 'CC110411', 'CC110606', 'CC112141', 'CC120049', 'CC120061',
+                 'CC120120', 'CC120182', 'CC120264', 'CC120309', 'CC120313',
+                 'CC120319', 'CC120376', 'CC120469', 'CC120550']
 
-# subject = 'sample'
-# subject = 'CC120008'
-# subject = 'CC110033'
-subject = 'CC110101'
-# subject = 'CC110187'
-# subject = 'CC110411'
-# subject = 'CC110606'
-# subject = 'CC112141'
-# subject = 'CC120049'
-# subject = 'CC120061'
-# subject = 'CC120120'
-# subject = 'CC120182'
-# subject = 'CC120264'
-# subject = 'CC120309'
-# subject = 'CC120313'
-# subject = 'CC120319'
-# subject = 'CC120376'
-# subject = 'CC120469'
-# subject = 'CC120550'
+for subject in subject_names:
+    # morph fsaverage labels to the subject we are using
+    parcels_subject = mne.morph_labels(parcels_fsaverage, subject, 'fsaverage',
+                                       subjects_dir, 'white')
 
-# morph fsaverage labels to the subject we are using
-parcels_subject = mne.morph_labels(parcels_fsaverage, subject, 'fsaverage',
-                                   subjects_dir,
-                                   'white')
-
-simulate_for_subject(subject, data_path, parcels_subject, make_new=False)
+    simulate_for_subject(subject, data_path, parcels_subject, n_samples=2000,
+                         make_new=False)
 
 if visualize and plot_data:
     visualize_brain(subject, hemi, 'random' + str(n_parcels), subjects_dir,
