@@ -29,6 +29,8 @@ else:
     pass
     # TODO: empty existing path
 
+if data_dir_all in data_dirs:
+    data_dirs.remove(data_dir_all)
 
 # initialize the files in the data_dir_all
 
@@ -40,7 +42,6 @@ for idx, subject_path in enumerate(data_dirs):
     print('adding subject ' + subject_name)
     subject_data = pd.read_csv(os.path.join(subject_path, 'X.csv'))
     subject_data['subject'] = subject_name
-    import pdb; pdb.set_trace()
     target_subject = sparse.load_npz(os.path.join(subject_path,
                                                'target.npz'))
 
