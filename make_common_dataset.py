@@ -4,6 +4,8 @@ import os
 import pandas as pd
 from scipy import sparse
 from scipy.sparse import save_npz
+from shutil import copyfile
+
 
 # read the data from the given subjects
 subjects = 'all'
@@ -27,25 +29,20 @@ else:
     pass
     # TODO: empty existing path
 
+
 # initialize the files in the data_dir_all
 
 all_X_file = os.path.join(data_dir_all, 'X.csv')
 # TODO: remove data_grad_all from the data dirs
 for idx, subject_path in enumerate(data_dirs):
     subject_info = subject_path.split('_')
-    print('adding subject ' + subject_info[2])
+    subject_name = subject_info[2]
+    print('adding subject ' + subject_name)
     subject_data = pd.read_csv(os.path.join(subject_path, 'X.csv'))
-    subject_data['subject'] = subject_info[2]
+    subject_data['subject'] = subject_name
     import pdb; pdb.set_trace()
     target_subject = sparse.load_npz(os.path.join(subject_path,
                                                'target.npz'))
-
-    #
-    # target_subject = np.sparse.load_npz('/tmp/sparse_matrix.npz')
-
-    #target = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
-    #import pdb; pdb.set_trace()
-
 
     if idx == 0:
         # create new .csv file
@@ -55,6 +52,10 @@ for idx, subject_path in enumerate(data_dirs):
         # append the data
         subject_data.to_csv(all_X_file, mode='a', header=False, index=False)
         target_all = sparse.vstack((target_all, target_subject))
+    copyfile(os.path.join(subject_path, 'labels.pickle'),
+             os.path.join(subject_path, subject_name + 'labels.pickle'))
+    copyfile(os.path.join(subject_path, 'lead_field.npz'),
+             os.path.join(subject_path, subject_name + 'lead_field.pickle'))
 
     # import pdb; pdb.set_trace()
     # read the data
