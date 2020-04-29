@@ -48,10 +48,12 @@ for idx, subject_path in enumerate(data_dirs):
         subject_data.to_csv(all_X_file, mode='a', header=False, index=False)
         target_all = sparse.vstack((target_all, target_subject))
     shutil.copyfile(os.path.join(subject_path, 'labels.pickle'),
-                    os.path.join(data_dir_all, subject_name + 'labels.pickle'))
+                    os.path.join(data_dir_all, subject_name + '_labels.pickle')
+                    )
     shutil.copyfile(os.path.join(subject_path, 'lead_field.npz'),
                     os.path.join(data_dir_all,
-                                 subject_name + 'lead_field.pickle'))
+                                 subject_name + '_lead_field.pickle')
+                    )
 
 # save the target
 save_npz(os.path.join(data_dir_all, 'target.npz'), target_all)
