@@ -1,7 +1,9 @@
 import glob
 import numpy as np
-import pandas as pd
 import os
+import pandas as pd
+from scipy import sparse
+from scipy.sparse import save_npz
 
 # read the data from the given subjects
 subjects = 'all'
@@ -34,16 +36,25 @@ for idx, subject_path in enumerate(data_dirs):
     print('adding subject ' + subject_info[2])
     subject_data = pd.read_csv(os.path.join(subject_path, 'X.csv'))
     subject_data['subject'] = subject_info[2]
-
-    target_data = np.load(os.path.join(subject_path, 'target.npz'))
     import pdb; pdb.set_trace()
+    target_subject = sparse.load_npz(os.path.join(subject_path,
+                                               'target.npz'))
 
-    try:
-        # append the data
-        subject_data.to_csv(all_X_file, mode='a', header=False, index=False)
-    except:
+    #
+    # target_subject = np.sparse.load_npz('/tmp/sparse_matrix.npz')
+
+    #target = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
+    #import pdb; pdb.set_trace()
+
+
+    if idx == 0:
         # create new .csv file
         subject_data.to_csv(all_X_file, header=True, index=False)
+        target_all = target_subject
+    else:
+        # append the data
+        subject_data.to_csv(all_X_file, mode='a', header=False, index=False)
+        target_all = sparse.vstack((target_all, target_subject))
 
     # import pdb; pdb.set_trace()
     # read the data
@@ -51,6 +62,8 @@ for idx, subject_path in enumerate(data_dirs):
     # df.to_csv(os.path.join(data_dir_specific, 'X.csv'), index=False)
     # save_npz(os.path.join(data_dir_specific, 'target.npz'), target)
     # print(str(len(df)), ' samples were saved')
+# save the target
+save_npz(os.path.join(data_dir_all, 'target.npz'), target_all)
 #    pass
 # if not combine:
     # make new data folder
