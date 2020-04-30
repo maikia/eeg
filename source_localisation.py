@@ -177,10 +177,10 @@ def make_learning_curve_for_all(data_dir):
         lasso_lars = SparseRegressor(L, parcel_indices,
                                     linear_model.LassoLarsCV(max_iter=10,
                                                             n_jobs=N_JOBS))
-        lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
+        # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
         # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
         # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-        models = {'lead correlate': lc}
+        models = {'lasso lars': lasso_lars}
 
         for name, model in models.items():
             score = learning_curve(X, y, model=model, model_name=name)

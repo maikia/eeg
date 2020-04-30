@@ -20,13 +20,22 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
     def decision_function(self, X):
         model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
-        model.fit(self.lead_field, X.T)
-        n_est = len(model.estimators_)
-        betas = np.empty([n_est, len(np.unique(self.parcel_indices))])
-        for idx in range(n_est):
-            est_coef = np.abs(model.estimators_[idx].coef_)
-            beta = pd.DataFrame(
-                np.abs(est_coef)
-            ).groupby(self.parcel_indices).max().transpose()
-            betas[idx, :] = beta
+        X = X.reset_index(drop=True)
+
+        betas = np.empty((len(X), 0)).tolist()
+        for subj_idx in np.unique(X['subject']):
+            l_used = self.lead_field[subj_idx]
+            X_used = X[X['subject'] == subj_idx].loc[:,X.columns != 'subject']
+            model.fit(l_used, X_used.T)
+
+            n_est = len(model.estimators_)
+
+            for idx, idx_used in enumerate(X_used.index.values):
+                est_coef = np.abs(model.estimators_[idx].coef_)
+                beta = pd.DataFrame(
+                        np.abs(est_coef)
+                        ).groupby(
+                        self.parcel_indices[subj_idx]).max().transpose()
+                betas[idx_used] = np.array(beta).ravel()
+        betas = np.array(betas)
         return betas
