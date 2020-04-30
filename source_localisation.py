@@ -131,8 +131,7 @@ def calc_scores_for_leadcorrelate(data_dir):
     lc.fit(X_train, y_train)
 
     y_pred_test = lc.predict(X_test)
-    y_pred_train = lc.predict(X_train)
-
+    # y_pred_train = lc.predict(X_train)
 
     # calculating
     hl = hamming_loss(y_test, y_pred_test)
@@ -140,19 +139,20 @@ def calc_scores_for_leadcorrelate(data_dir):
     print('score: hamming: {:.2f}, jaccard: {:.2f}'.format(hl, js))
 
     scoring = {'froc_score': make_scorer(met.froc_score,
-                                        needs_threshold=True),
-            'afroc_score': make_scorer(met.afroc_score,
-                                        needs_threshold=True),
-            'jaccard': make_scorer(jaccard_score,
-                                    average='samples'),
-            'hamming': make_scorer(hamming_loss,
-                                    greater_is_better=False)}
+                                         needs_threshold=True),
+               'afroc_score': make_scorer(met.afroc_score,
+                                          needs_threshold=True),
+               'jaccard': make_scorer(jaccard_score,
+                                      average='samples'),
+               'hamming': make_scorer(hamming_loss,
+                                      greater_is_better=False)}
 
     scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
 
     scores = pd.DataFrame(scores)
     scores[['test_%s' % s for s in scoring]]
     print(scores.agg(['mean', 'std']))
+
 
 def make_learning_curve_for_all(data_dir):
     # Do learning curve for all models and all datasets
@@ -163,20 +163,21 @@ def make_learning_curve_for_all(data_dir):
         data_dirs = sorted(glob.glob(data_dir))
         data_dir_all = 'data/data_' + signal_type + '_all'
         [data_dirs.remove(all_file) for all_file in data_dirs if data_dir_all
-                                                in all_file]
+         in all_file]
     else:
         data_dirs = [data_dir]
 
     for idx, data_dir in enumerate(data_dirs):
-        print('{}/{} processing {} ... '.format(idx+1, len(data_dirs), data_dir))
+        print('{}/{} processing {} ... '.format(idx+1,
+                                                len(data_dirs), data_dir))
         subject = data_dir.split('_')[2]
         X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
         assert signal_type == signal_type_data
 
-        lc = LeadCorrelate(L, parcel_indices)
+        # lc = LeadCorrelate(L, parcel_indices)
         lasso_lars = SparseRegressor(L, parcel_indices,
-                                    linear_model.LassoLarsCV(max_iter=10,
-                                                            n_jobs=N_JOBS))
+                                     linear_model.LassoLarsCV(max_iter=10,
+                                                              n_jobs=N_JOBS))
         # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
         # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
         # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
@@ -201,7 +202,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
         if type(ax) == np.ndarray:
             ax[sub].plot(df.n_samples_train, df.score_test,
-                        label=str(cond[1])+cond[2])
+                         label=str(cond[1])+cond[2])
         else:
             ax.plot(df.n_samples_train, df.score_test,
                     label=str(cond[1])+cond[2])
@@ -211,7 +212,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
                         title='Parcels: '+str(parcel))
         else:
             ax.set(xlabel='n_samples_train', ylabel='score',
-                title='Parcels: '+str(parcel))
+                   title='Parcels: '+str(parcel))
         plt.legend()
     plt.tight_layout()
     plt.savefig('figs/' + file_name + ext)

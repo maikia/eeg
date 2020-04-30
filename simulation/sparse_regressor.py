@@ -25,10 +25,8 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         betas = np.empty((len(X), 0)).tolist()
         for subj_idx in np.unique(X['subject']):
             l_used = self.lead_field[subj_idx]
-            X_used = X[X['subject'] == subj_idx].loc[:,X.columns != 'subject']
+            X_used = X[X['subject'] == subj_idx].loc[:, X.columns != 'subject']
             model.fit(l_used, X_used.T)
-
-            n_est = len(model.estimators_)
 
             for idx, idx_used in enumerate(X_used.index.values):
                 est_coef = np.abs(model.estimators_[idx].coef_)
