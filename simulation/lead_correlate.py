@@ -115,7 +115,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         """
         n_samples, _ = X.shape
         L = self.lead_field
-
         # normalize each leadfield column wise
         L = [l / linalg.norm(l, axis=0) for l in L]
         parcel_indices = self.parcel_indices_leadfield
@@ -127,14 +126,13 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
             x = x / linalg.norm(x)  # normalize x to take correlations
 
             corr = (pd.DataFrame(np.abs(L[subj_idx].T.dot(x)))
-                   .groupby(parcel_indices).max().transpose())
+                   .groupby(parcel_indices[subj_idx]).max().transpose())
             if not idx:
                 correlation = corr
             else:
                 correlation = correlation.append(corr)
 
         correlation.index = range(n_samples)
-
         # in case 0 index is passed (which is of unused parcels, drop them)
         if 0 in correlation:
             correlation = correlation.drop(columns=0)
