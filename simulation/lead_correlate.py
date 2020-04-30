@@ -3,8 +3,6 @@ import pandas as pd
 from scipy import linalg
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn import linear_model
 
 from sklearn.utils.validation import check_is_fitted
 
@@ -15,8 +13,6 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
     """
     Parameters
     ----------
-    demo_param : str, default='demo_param'
-        A parameter used for demonstation of how to pass and store paramters.
     """
     def __init__(self, lead_field, parcel_indices_leadfield):
         self.lead_field = lead_field
@@ -119,19 +115,23 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         """
         n_samples, _ = X.shape
         L = self.lead_field
-        L = L / linalg.norm(L, axis=0)  # normalize leadfield column wise
+
+        # normalize each leadfield column wise
+        L = [l / linalg.norm(l, axis=0) for l in L]
         parcel_indices = self.parcel_indices_leadfield
 
         for idx in range(n_samples):
             x = X.iloc[idx]
+            subj_idx = int(x['subject'])
+            x = x[:-1]  # remove 'subject' from x
             x = x / linalg.norm(x)  # normalize x to take correlations
 
-            corr = pd.DataFrame(
-                np.abs(L.T.dot(x))).groupby(parcel_indices).max().transpose()
+            corr = (pd.DataFrame(np.abs(L[subj_idx].T.dot(x)))
+                   .groupby(parcel_indices).max().transpose())
             if not idx:
                 correlation = corr
             else:
-                correlation = correlation.append(corr)  # please run flake8
+                correlation = correlation.append(corr)
 
         correlation.index = range(n_samples)
 
