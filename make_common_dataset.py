@@ -52,7 +52,7 @@ for idx, subject_path in enumerate(data_dirs):
                     )
     shutil.copyfile(os.path.join(subject_path, 'lead_field.npz'),
                     os.path.join(data_dir_all,
-                                 subject_name + '_lead_field.pickle')
+                                 subject_name + '_lead_field.npz')
                     )
 
 # save the target
