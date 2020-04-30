@@ -107,6 +107,7 @@ def load_data(data_dir):
     else:
         import pdb
         pdb.set_trace()  # TODO: add for multiple subjects
+    X.astype({'subject': 'int32'}).dtypes
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
     # Scale data to avoid tiny numbers
     X.loc[:, X.columns != 'subject'] /= np.max(X.loc[:,
@@ -158,6 +159,9 @@ scores_all = []
 if data_dir == 'all':
     data_dir = 'data/data_' + signal_type + '_*'
     data_dirs = sorted(glob.glob(data_dir))
+    data_dir_all = 'data/data_' + signal_type + '_all'
+    [data_dirs.remove(all_file) for all_file in data_dirs if data_dir_all
+                                             in all_file]
 else:
     data_dirs = [data_dir]
 
@@ -174,7 +178,7 @@ for idx, data_dir in enumerate(data_dirs):
     lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
     # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
     # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-    models = {'lasso lars': lasso_lars}
+    models = {'lead correlate': lc}
 
     for name, model in models.items():
         score = learning_curve(X, y, model=model, model_name=name)
