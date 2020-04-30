@@ -90,7 +90,8 @@ def load_data(data_dir):
         lead_matrix = np.load(lead_file)
 
         if subject_name == 'all':
-            import pdb; pdb.set_trace() # TODO: add for multiple subjects
+            import pdb
+            pdb.set_trace()  # TODO: add for multiple subjects
             subj_dict[lead_file.split('_')] = idx
         else:
             subj_dict[subject_name] = idx
@@ -104,7 +105,8 @@ def load_data(data_dir):
     if len(subj_dict) == 1:
         X['subject'] = 0
     else:
-        import pdb; pdb.set_trace() # TODO: add for multiple subjects
+        import pdb
+        pdb.set_trace()  # TODO: add for multiple subjects
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
     # Scale data to avoid tiny numbers
     X.loc[:, X.columns != 'subject'] /= np.max(X.loc[:,
@@ -168,12 +170,11 @@ for idx, data_dir in enumerate(data_dirs):
     lc = LeadCorrelate(L, parcel_indices)
     lasso_lars = SparseRegressor(L, parcel_indices,
                                  linear_model.LassoLarsCV(max_iter=10,
-                                 n_jobs=N_JOBS))
+                                                          n_jobs=N_JOBS))
     lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
     # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
     # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
     models = {'lasso lars': lasso_lars}
-
 
     for name, model in models.items():
         score = learning_curve(X, y, model=model, model_name=name)
@@ -197,14 +198,14 @@ if plot_data:
                              label=str(cond[1])+cond[2])
             else:
                 ax.plot(df.n_samples_train, df.score_test,
-                             label=str(cond[1])+cond[2])
+                        label=str(cond[1])+cond[2])
         for idx, parcel in enumerate(diff_parcels):
             if type(ax) == np.ndarray:
                 ax[idx].set(xlabel='n_samples_train', ylabel='score',
                             title='Parcels: '+str(parcel))
             else:
                 ax.set(xlabel='n_samples_train', ylabel='score',
-                    title='Parcels: '+str(parcel))
+                       title='Parcels: '+str(parcel))
             plt.legend()
         plt.tight_layout()
         plt.savefig('figs/' + file_name + ext)
@@ -213,6 +214,4 @@ if plot_data:
     # plot the results for each subject separately
     for subject in np.unique(scores_all['subject']):
         scores = scores_all[scores_all['subject'] == subject]
-        plot_scores(scores, file_name = 'learning_curves_' + subject)
-
-
+        plot_scores(scores, file_name='learning_curves_'+subject)
