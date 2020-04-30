@@ -34,7 +34,8 @@ plot_data = True
 # data_dir = 'all' if all directories starting with 'data_' should be simulated
 # otherwise give name of the directory
 # e.g data_dir = 'data_CC120008_26_3'
-data_dir = 'data_grad_sample_26_3'
+# data_dir = 'data/data_grad_sample_26_3'
+data_dir = 'all'
 signal_type = 'grad'
 
 
@@ -75,14 +76,40 @@ def learning_curve(X, y, model=None, model_name=''):
 
 
 def load_data(data_dir):
-    lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
-    parcel_indices_leadfield = lead_matrix['parcel_indices']
-    signal_type = lead_matrix['signal_type']
-    L = lead_matrix['lead_field']
+    # find all the files with lead_field
+    # lead_matrix = np.load(os.path.join(data_dir, 'lead_field.npz'))
+    lead_field_files = os.path.join(data_dir, 'lead_field.npz')
+    lead_field_files = sorted(glob.glob(lead_field_files))
+    subject_name = data_dir.split('_')[2]
 
+    assert len(lead_field_files) >= 1
+
+    parcel_indices_leadfield, L = [], []
+    subj_dict = {}
+    for idx, lead_file in enumerate(lead_field_files):
+        lead_matrix = np.load(lead_file)
+
+        if subject_name == 'all':
+            import pdb; pdb.set_trace() # TODO: add for multiple subjects
+            subj_dict[lead_file.split('_')] = idx
+        else:
+            subj_dict[subject_name] = idx
+        parcel_indices_leadfield.append(lead_matrix['parcel_indices'])
+        L.append(lead_matrix['lead_field'])
+        assert parcel_indices_leadfield[idx].shape[0] == L[idx].shape[1]
+    signal_type = lead_matrix['signal_type']
+
+    assert len(parcel_indices_leadfield) == len(L) == idx + 1
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
+    if len(subj_dict) == 1:
+        X['subject'] = 0
+    else:
+        import pdb; pdb.set_trace() # TODO: add for multiple subjects
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
-    X /= np.max(X)  # Scale data to avoid tiny numbers
+    # Scale data to avoid tiny numbers
+    X.loc[:, X.columns != 'subject'] /= np.max(X.loc[:,
+                                                     X.columns != 'subject'])
+    assert y.shape[0] == X.shape[0]
     return X, y, L, parcel_indices_leadfield, signal_type
 
 
@@ -127,7 +154,7 @@ print(scores.agg(['mean', 'std']))
 scores_all = []
 
 if data_dir == 'all':
-    data_dir = 'data_' + signal_type + '_*'
+    data_dir = 'data/data_' + signal_type + '_*'
     data_dirs = sorted(glob.glob(data_dir))
 else:
     data_dirs = [data_dir]
@@ -145,7 +172,7 @@ for idx, data_dir in enumerate(data_dirs):
     lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
     # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
     # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-    models = {'': None}
+    models = {'lasso lars': lasso_lars}
 
 
     for name, model in models.items():
