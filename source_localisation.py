@@ -58,7 +58,7 @@ def learning_curve(X, y, model=None, model_name=''):
         model_name = 'Kneighbours3'
 
     # TODO: remove this line
-    n_samples_grid = n_samples_grid[n_samples_grid < 5000]
+    # n_samples_grid = n_samples_grid[n_samples_grid < 5000]
     for n_samples_train in n_samples_grid:
         # for test use either all test samples or n_samples_train
         n_samples_test = min(len(X_test), n_samples_train)
@@ -107,10 +107,17 @@ def load_data(data_dir):
     signal_type = lead_matrix['signal_type']
 
     assert len(parcel_indices_leadfield) == len(L) == idx + 1
+    assert len(subj_dict) >= 1  # at least a single subject
+
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
-    X['subject'] = X['subject'].map(subj_dict)
+
+    if subject_name == 'all':
+        X['subject'] = X['subject'].map(subj_dict)
+    else:
+        X['subject'] = idx
     X.astype({'subject': 'int32'}).dtypes
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
+
     # Scale data to avoid tiny numbers
     X.loc[:, X.columns != 'subject'] /= np.max(X.loc[:,
                                                      X.columns != 'subject'])
