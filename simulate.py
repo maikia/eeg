@@ -1,6 +1,5 @@
 import os
 
-import matplotlib.pylab as plt
 import numpy as np
 import pandas as pd
 import pickle
@@ -20,13 +19,11 @@ from simulation.parcels import make_random_parcellation
 
 import config
 
-if os.environ.get('DISPLAY'):  # display exists
-    from simulation.plot_signal import visualize_brain
-    visualize = True
+if os.environ.get('DISPLAY'):
+    # display exists
     N_JOBS = 1
 else:
     # running on the server, no display
-    visualize = False
     N_JOBS = -1
 
 # IMPORTANT: run it with ipython --gui=qt
@@ -315,6 +312,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
              lead_field=lead_field, parcel_indices=parcel_indices_l,
              signal_type=signal_type)
+    return data_dir_specific
 
 
 # same variables
@@ -323,7 +321,7 @@ n_parcels = 20  # number of parcels per hemisphere
 random_state = 42
 n_samples = 200
 hemi = 'both'
-n_parcels_max=3
+n_parcels_max = 3
 plot_data = True
 
 data_path = mne.datasets.sample.data_path()
@@ -342,21 +340,10 @@ for subject in subject_names:
     parcels_subject = mne.morph_labels(parcels_fsaverage, subject, 'fsaverage',
                                        subjects_dir, 'white')
 
-    simulate_for_subject(subject, data_path, parcels_subject,
-                         n_parcels_max=n_parcels_max, n_samples=n_samples,
-                         make_new=False)
-
-    if visualize and plot_data:
-        fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
-                    str(n_parcels_max))
-        visualize_brain(subject, hemi, fig_name, subjects_dir, parcels_subject)
+    X, y = simulate_for_subject(subject, data_path, parcels_subject,
+                                n_parcels_max=n_parcels_max,
+                                n_samples=n_samples, make_new=False)
 
     if plot_data:
-        # Visualize
-        # TODO set case_specific, df, signal_type, parcels_flat, hemi
-        fig, axes = plt.subplots(figsize=(7.5, 2.5), ncols=5)
-        fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-        info = mne.read_evokeds(fname)[0].pick(signal_type).info
-        evoked = mne.EvokedArray(df.values.T, info, tmin=0)
-        evoked.plot_topomap(axes=axes)
-        plt.savefig(os.path.join('figs', 'evoked' + case_specific + '.png'))
+        fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
+                    str(n_parcels_max))
