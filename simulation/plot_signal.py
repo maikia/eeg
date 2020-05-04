@@ -27,7 +27,9 @@ def visualize_brain(subject, hemi, annot_name, subjects_dir, parcels_selected,
     for parcel in parcels_selected:
         brain.add_label(parcel, alpha=1, color=parcel.color)
 
-    brain.save_image(os.path.join(fig_dir, 'brain_' + annot_name + ext))
+    save_fig = os.path.join(fig_dir, 'brain_' + annot_name + ext)
+    brain.save_image(save_fig)
+    print('brain image saved in {}'.format(save_fig))
 
 
 def plot_sources_at_activation(X, y, signal_type, fig_dir='figs', ext='.png'):
