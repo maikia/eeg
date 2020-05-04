@@ -143,9 +143,9 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
     return parcels_flat
 
 
-def simulate_for_subject(subject_name, data_path, parcels_subject,
+def simulate_for_subject(subject, data_path, parcels_subject,
                          n_samples=2000, n_parcels_max=3, signal_type='grad',
-                         make_new=True):
+                         make_new=True, random_state=42):
     """ simulates the data for a given subject. It generates and saves the
     following:
     X.csv: data of the shape n_samples x n_electrodes
@@ -161,7 +161,7 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
 
     Parameters
     ----------
-    subject_name : string. Name of the subject: it can be either 'sample' or
+    subject : string. Name of the subject: it can be either 'sample' or
         one of the subjects for which the data is stored in the directories
         given in config.py (raw, and fwd)
     parcels_subject : list of parcels (usually morphed from fsaverage subject)
@@ -315,35 +315,40 @@ def simulate_for_subject(subject_name, data_path, parcels_subject,
     return data_dir_specific
 
 
-# same variables
-n_parcels = 20  # number of parcels per hemisphere
-# (will be reduced by corpus callosum)
-random_state = 42
-n_samples = 200
-hemi = 'both'
-n_parcels_max = 3
-plot_data = True
+if __name__ == "__main__":
+    # same variables
+    n_parcels = 20  # number of parcels per hemisphere
+    # (will be reduced by corpus callosum)
+    random_state = 42
+    n_samples = 200
+    hemi = 'both'
+    n_parcels_max = 3
+    plot_data = True
 
-data_path = mne.datasets.sample.data_path()
-subjects_dir = os.path.join(data_path, 'subjects')
-parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
-                                              n_parcels=n_parcels,
-                                              random_state=random_state)
+    data_path = mne.datasets.sample.data_path()
+    subjects_dir = os.path.join(data_path, 'subjects')
+    parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
+                                                n_parcels=n_parcels,
+                                                random_state=random_state)
 
-subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101', 'CC110187',
-                 'CC110411', 'CC110606', 'CC112141', 'CC120049', 'CC120061',
-                 'CC120120', 'CC120182', 'CC120264', 'CC120309', 'CC120313',
-                 'CC120319', 'CC120376', 'CC120469', 'CC120550']
+    subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101', 'CC110187',
+                    'CC110411', 'CC110606', 'CC112141', 'CC120049', 'CC120061',
+                    'CC120120', 'CC120182', 'CC120264', 'CC120309', 'CC120313',
+                    'CC120319', 'CC120376', 'CC120469', 'CC120550']
 
-for subject in subject_names:
-    # morph fsaverage labels to the subject we are using
-    parcels_subject = mne.morph_labels(parcels_fsaverage, subject, 'fsaverage',
-                                       subjects_dir, 'white')
+    for subject in subject_names:
+        # TODO: parallel works only for a single subject, then hangs, repair
+        # morph fsaverage labels to the subject we are using
+        parcels_subject = mne.morph_labels(parcels_fsaverage, subject,
+                                           'fsaverage', subjects_dir, 'white')
 
-    X, y = simulate_for_subject(subject, data_path, parcels_subject,
-                                n_parcels_max=n_parcels_max,
-                                n_samples=n_samples, make_new=False)
+        data_dir_specific = simulate_for_subject(subject, data_path,
+                                                 parcels_subject,
+                                                 n_parcels_max=n_parcels_max,
+                                                 n_samples=n_samples,
+                                                 make_new=False,
+                                                 random_state=random_state)
 
-    if plot_data:
-        fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
-                    str(n_parcels_max))
+        if plot_data:
+            fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
+                        str(n_parcels_max))
