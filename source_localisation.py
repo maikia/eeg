@@ -9,6 +9,8 @@ from scipy import sparse
 from sklearn import linear_model
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from simulation.lead_correlate import LeadCorrelate
 from simulation.sparse_regressor import SparseRegressor
@@ -38,7 +40,7 @@ data_dir = 'data/data_grad_all_26_3'
 signal_type = 'grad'
 
 
-def learning_curve(X, y, model=None, model_name=''):
+def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # runs given model (if None KNeighbours = 3 will be used) with the data
     # with different number of max sources and different number of brain
     # parcels and plots their score depending on number of samples used.
@@ -48,8 +50,10 @@ def learning_curve(X, y, model=None, model_name=''):
     X_train, X_test, y_train, y_test = \
         train_test_split(X, y, test_size=0.2, random_state=42)
 
-    n_samples_grid = np.logspace(1, np.log10(len(X_train)),
-                                 num=10, base=10, dtype='int')
+    if n_samples_grid == 'auto':
+        n_samples_grid = np.logspace(1, np.log10(len(X_train)),
+                                     num=10, base=10, dtype='int')
+
     scores_all = pd.DataFrame(columns=['n_samples_train', 'score_test'])
 
     if model is None:
@@ -57,8 +61,6 @@ def learning_curve(X, y, model=None, model_name=''):
         model = MultiOutputClassifier(clf, n_jobs=N_JOBS)
         model_name = 'Kneighbours3'
 
-    # TODO: remove this line
-    # n_samples_grid = n_samples_grid[n_samples_grid < 5000]
     for n_samples_train in n_samples_grid:
         # for test use either all test samples or n_samples_train
         n_samples_test = min(len(X_test), n_samples_train)
@@ -161,7 +163,7 @@ def calc_scores_for_leadcorrelate(data_dir):
     print(scores.agg(['mean', 'std']))
 
 
-def make_learning_curve_for_all(data_dir):
+def make_learning_curve_for_all(data_dir, n_samples_grid):
     # Do learning curve for all models and all datasets
     scores_all = []
 
@@ -174,29 +176,38 @@ def make_learning_curve_for_all(data_dir):
     else:
         data_dirs = [data_dir]
 
-    for idx, data_dir in enumerate(data_dirs):
-        print('{}/{} processing {} ... '.format(idx+1,
+    for idx, data_dir in enumerate(data_dirs, 1):
+        print('{}/{} processing {} ... '.format(idx,
                                                 len(data_dirs), data_dir))
         subject = data_dir.split('_')[2]
         X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
         assert signal_type == signal_type_data
 
+        model = make_pipeline(
+            StandardScaler(with_mean=False),
+            linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
+                                     normalize=False, fit_intercept=False)
+        )
+
+        lasso_lars = SparseRegressor(
+            L, parcel_indices, model
+        )
+
         # lc = LeadCorrelate(L, parcel_indices)
-        lasso_lars = SparseRegressor(L, parcel_indices,
-                                     linear_model.LassoLarsCV(max_iter=10,
-                                                              n_jobs=N_JOBS))
         # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
         # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
         # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
         models = {'lasso lars': lasso_lars}
 
         for name, model in models.items():
-            score = learning_curve(X, y, model=model, model_name=name)
+            score = learning_curve(X, y, model=model, model_name=name,
+                                   n_samples_grid=n_samples_grid)
             score['subject'] = subject
             scores_all.append(score)
 
     scores_all = pd.concat(scores_all, axis=0)
     scores_all.to_pickle("scores_all.pkl")  # TODO: save in another location
+    return scores_all
 
 
 # plot the results from all the calculated data
@@ -209,17 +220,17 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
         if type(ax) == np.ndarray:
             ax[sub].plot(df.n_samples_train, df.score_test,
-                         label=str(cond[1])+cond[2])
+                         label=str(cond[1]) + cond[2])
         else:
             ax.plot(df.n_samples_train, df.score_test,
-                    label=str(cond[1])+cond[2])
+                    label=str(cond[1]) + cond[2])
     for idx, parcel in enumerate(diff_parcels):
         if type(ax) == np.ndarray:
             ax[idx].set(xlabel='n_samples_train', ylabel='score',
-                        title='Parcels: '+str(parcel))
+                        title='Parcels: ' + str(parcel))
         else:
             ax.set(xlabel='n_samples_train', ylabel='score',
-                   title='Parcels: '+str(parcel))
+                   title='Parcels: ' + str(parcel))
         plt.legend()
     plt.tight_layout()
     plt.savefig('figs/' + file_name + ext)
@@ -228,9 +239,12 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 # TODO: test
 # calc_scores_for_leadcorrelate(data_dir)
 # TODO: test
-make_learning_curve_for_all(data_dir)
+n_samples_grid = 'auto'
+# n_samples_grid = [300]
+scores_all = make_learning_curve_for_all(data_dir, n_samples_grid)
 # TODO: test
 plot_data
+
 if plot_data:
     scores_all = pd.read_pickle("scores_all.pkl")
     plot_scores(scores_all, file_name='learning_curves', ext='.png')
@@ -238,4 +252,4 @@ if plot_data:
     # plot the results for each subject separately
     for subject in np.unique(scores_all['subject']):
         scores = scores_all[scores_all['subject'] == subject]
-        plot_scores(scores, file_name='learning_curves_'+subject)
+        plot_scores(scores, file_name='learning_curves_' + subject)
