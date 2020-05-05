@@ -30,7 +30,6 @@ else:
     N_JOBS = -1
 
 
-plot_data = True
 # data_dir = 'all' if all directories starting with 'data_' should be simulated
 # otherwise give name of the directory
 # e.g data_dir = 'data/data_grad_sample_26_3' or 'all'
@@ -58,7 +57,7 @@ def learning_curve(X, y, model=None, model_name=''):
         model_name = 'Kneighbours3'
 
     # TODO: remove this line
-    # n_samples_grid = n_samples_grid[n_samples_grid < 5000]
+    n_samples_grid = n_samples_grid[n_samples_grid < 5000]
     for n_samples_train in n_samples_grid:
         # for test use either all test samples or n_samples_train
         n_samples_test = min(len(X_test), n_samples_train)
@@ -125,10 +124,10 @@ def load_data(data_dir):
     return X, y, L, parcel_indices_leadfield, signal_type
 
 
-def calc_scores_for_leadcorrelate(data_dir):
+def calc_scores_for_leadcorrelate(data_dir, plot_data=False):
     X, y, L, parcel_indices_leadfield, signal_type = load_data(data_dir)
 
-    if plot_data and visualize_data:
+    if plot_data:
         plot_sources_at_activation(X, y, signal_type)
 
     X_train, X_test, y_train, y_test = \
@@ -181,14 +180,14 @@ def make_learning_curve_for_all(data_dir):
         X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
         assert signal_type == signal_type_data
 
-        # lc = LeadCorrelate(L, parcel_indices)
+        lc = LeadCorrelate(L, parcel_indices)
         lasso_lars = SparseRegressor(L, parcel_indices,
                                      linear_model.LassoLarsCV(max_iter=10,
                                                               n_jobs=N_JOBS))
         # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
         # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
-        # models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-        models = {'lasso lars': lasso_lars}
+        models = {'lead correlate': lc, 'lasso lars': lasso_lars}
+        # models = {'lasso lars': lasso_lars}
 
         for name, model in models.items():
             score = learning_curve(X, y, model=model, model_name=name)
@@ -225,12 +224,12 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
     plt.savefig('figs/' + file_name + ext)
 
 
-# TODO: test
-# calc_scores_for_leadcorrelate(data_dir)
-# TODO: test
-make_learning_curve_for_all(data_dir)
-# TODO: test
-plot_data
+plot_data = False
+calc_scores_for_leadcorrelate(data_dir, (plot_data and visualize_data))
+
+# make_learning_curve_for_all(data_dir)
+
+
 if plot_data:
     scores_all = pd.read_pickle("scores_all.pkl")
     plot_scores(scores_all, file_name='learning_curves', ext='.png')
