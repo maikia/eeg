@@ -33,7 +33,7 @@ else:
 
 
 def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
-    # runs given model (if None KNeighbours = 3 will be used) with the data
+    # runs given model with the data
     # with different number of max sources and different number of brain
     # parcels and plots their score depending on number of samples used.
 
@@ -47,11 +47,6 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
                                      num=10, base=10, dtype='int')
 
     scores_all = pd.DataFrame(columns=['n_samples_train', 'score_test'])
-
-    if model is None:
-        clf = KNeighborsClassifier(3)
-        model = MultiOutputClassifier(clf, n_jobs=N_JOBS)
-        model_name = 'Kneighbours3'
 
     for n_samples_train in n_samples_grid:
         # for test use either all test samples or n_samples_train
@@ -225,9 +220,13 @@ if __name__ == "__main__":
     # Lead COrrelate
     lc = LeadCorrelate(L, parcel_indices)
 
-    # TODO: make k-mean clustering settings here
+    # K-means
+    clf = KNeighborsClassifier(3)
+    kneighbours = MultiOutputClassifier(clf, n_jobs=N_JOBS)
+
     # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
-    models = {'lead correlate': lc, 'lasso lars': lasso_lars}
+    models = {'lead correlate': lc, 'lasso lars': lasso_lars,
+              'K-neighbours(3)': kneighbours}
 
     scores_all = make_learning_curve_for_all(X, y, models)
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
