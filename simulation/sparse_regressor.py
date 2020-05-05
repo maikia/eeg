@@ -5,6 +5,12 @@ from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.multioutput import MultiOutputRegressor
 
 
+def _get_coef(est):
+    if hasattr(est, 'steps'):
+        return est.steps[-1][1].coef_
+    return est.coef_
+
+
 class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
     def __init__(self, lead_field, parcel_indices, model, n_jobs=1):
         self.lead_field = lead_field
@@ -29,7 +35,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             model.fit(l_used, X_used.T)
 
             for idx, idx_used in enumerate(X_used.index.values):
-                est_coef = np.abs(model.estimators_[idx].coef_)
+                est_coef = np.abs(_get_coef(model.estimators_[idx]))
                 beta = pd.DataFrame(
                         np.abs(est_coef)
                         ).groupby(
