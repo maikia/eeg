@@ -163,7 +163,7 @@ def make_learning_curve_for_all(X, y, models):
     for name, model in models.items():
         score = learning_curve(X, y, model=model, model_name=name,
                                n_samples_grid=n_samples_grid)
-        score['subject'] = subject
+
         scores_all.append(score)
 
     scores_all = pd.concat(scores_all, axis=0)
@@ -206,7 +206,7 @@ if __name__ == "__main__":
 
     # load data
     print('processing {} ... '.format(data_dir))
-    subject = data_dir.split('_')[2]
+
     X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
     assert signal_type == signal_type_data
 
