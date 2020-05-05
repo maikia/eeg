@@ -114,17 +114,22 @@ def load_data(data_dir):
     return X, y, L, parcel_indices_leadfield, signal_type
 
 
-def calc_scores_for_leadcorrelate(data_dir, plot_data=False):
-    X, y, L, parcel_indices_leadfield, signal_type = load_data(data_dir)
-
-    if plot_data:
-        plot_sources_at_activation(X, y, signal_type)
-
+def calc_scores_for_model(X, y, model, n_samples=-1):
+    '''
+    TODO: add doc
+    '''
+    print('calculating various scores for the model')
     X_train, X_test, y_train, y_test = \
         train_test_split(X, y, test_size=0.2, random_state=42)
 
-    lc = LeadCorrelate(L, parcel_indices_leadfield)
-    lc.fit(X_train, y_train)
+    if n_samples > -1:
+        # use only subset of the data
+        X_train = X_train[:min(len(X_train), n_samples)]
+        X_test = X_test[:min(len(X_test), n_samples)]
+        y_train = y_train[:min(len(y_train), n_samples)]
+        y_test = y_test[:min(len(y_test), n_samples)]
+
+    model.fit(X_train, y_train)
 
     y_pred_test = lc.predict(X_test)
     # y_pred_train = lc.predict(X_train)
@@ -143,11 +148,12 @@ def calc_scores_for_leadcorrelate(data_dir, plot_data=False):
                'hamming': make_scorer(hamming_loss,
                                       greater_is_better=False)}
 
-    scores = cross_validate(lc, X_train, y_train, cv=3, scoring=scoring)
+    scores = cross_validate(model, X_train, y_train, cv=3, scoring=scoring)
 
     scores = pd.DataFrame(scores)
     scores[['test_%s' % s for s in scoring]]
     print(scores.agg(['mean', 'std']))
+    return scores
 
 
 def make_learning_curve_for_all(X, y, models):
@@ -191,11 +197,9 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     data_dir = 'data/data_grad_all_26_3'
     signal_type = 'grad'
-    # TODO: correct for new data settings:
-    # calc_scores_for_leadcorrelate(data_dir, (plot_data and visualize_data))
 
     # n_samples_grid = 'auto'
     n_samples_grid = [300]
@@ -224,15 +228,26 @@ if __name__ == "__main__":
     clf = KNeighborsClassifier(3)
     kneighbours = MultiOutputClassifier(clf, n_jobs=N_JOBS)
 
-    # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
+    # calculate various scores for Lead Correlate model
+    if n_samples_grid != 'auto':
+        n_samples = n_samples_grid[-1]
+    else:
+        n_samples = -1
+    calc_scores_for_model(X, y, model=lc, n_samples=n_samples)
+
+    # make learning curve for selected models
     models = {'lead correlate': lc, 'lasso lars': lasso_lars,
               'K-neighbours(3)': kneighbours}
-
     scores_all = make_learning_curve_for_all(X, y, models)
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     scores_all.to_pickle(scores_save_file)
 
     print(scores_all.tail(len(models)))
+
+    plot_data = plot_data and visualize_data
+    if plot_data:
+        # TODO: update this function, not working atm
+        plot_sources_at_activation(X, y, signal_type)
 
     if plot_data:
         scores_all = pd.read_pickle(scores_save_file)
