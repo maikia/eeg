@@ -32,13 +32,6 @@ else:
     N_JOBS = -1
 
 
-# data_dir = 'all' if all directories starting with 'data_' should be simulated
-# otherwise give name of the directory
-# e.g data_dir = 'data/data_grad_sample_26_3' or 'all'
-data_dir = 'data/data_grad_all_26_3'
-signal_type = 'grad'
-
-
 def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # runs given model (if None KNeighbours = 3 will be used) with the data
     # with different number of max sources and different number of brain
@@ -162,52 +155,17 @@ def calc_scores_for_leadcorrelate(data_dir, plot_data=False):
     print(scores.agg(['mean', 'std']))
 
 
-def make_learning_curve_for_all(data_dir, n_samples_grid):
+def make_learning_curve_for_all(X, y, models):
     # Do learning curve for all models and all datasets
     scores_all = []
 
-    if data_dir == 'all':
-        data_dir = 'data/data_' + signal_type + '_*'
-        data_dirs = sorted(glob.glob(data_dir))
-        data_dir_all = 'data/data_' + signal_type + '_all'
-        [data_dirs.remove(all_file) for all_file in data_dirs if data_dir_all
-         in all_file]
-    else:
-        data_dirs = [data_dir]
-
-    for idx, data_dir in enumerate(data_dirs, 1):
-        print('{}/{} processing {} ... '.format(idx,
-                                                len(data_dirs), data_dir))
-        subject = data_dir.split('_')[2]
-        X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
-        assert signal_type == signal_type_data
-
-
-        model = make_pipeline(
-            StandardScaler(with_mean=False),
-            linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
-                                     normalize=False, fit_intercept=False)
-        )
-
-        lasso_lars = SparseRegressor(
-            L, parcel_indices, model
-        )
-
-        lc = LeadCorrelate(L, parcel_indices)
-
-        # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
-        # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
-        models = {'lead correlate': lc, 'lasso lars': lasso_lars}
-        # models = {'lasso lars': lasso_lars}
-
-        for name, model in models.items():
-            score = learning_curve(X, y, model=model, model_name=name,
-                                   n_samples_grid=n_samples_grid)
-            score['subject'] = subject
-            scores_all.append(score)
+    for name, model in models.items():
+        score = learning_curve(X, y, model=model, model_name=name,
+                               n_samples_grid=n_samples_grid)
+        score['subject'] = subject
+        scores_all.append(score)
 
     scores_all = pd.concat(scores_all, axis=0)
-    scores_all.to_pickle("scores_all.pkl")  # TODO: save in another location
     return scores_all
 
 
@@ -237,18 +195,51 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
     plt.savefig('figs/' + file_name + ext)
 
 
-plot_data = True
-# calc_scores_for_leadcorrelate(data_dir, (plot_data and visualize_data))
+if __name__ == "__main__":
+    plot_data = True
+    data_dir = 'data/data_grad_all_26_3'
+    signal_type = 'grad'
+    # TODO: correct for new data settings:
+    # calc_scores_for_leadcorrelate(data_dir, (plot_data and visualize_data))
 
-n_samples_grid = 'auto'
-# n_samples_grid = [300]
-scores_all = make_learning_curve_for_all(data_dir, n_samples_grid)
+    # n_samples_grid = 'auto'
+    n_samples_grid = [300]
 
-if plot_data:
-    scores_all = pd.read_pickle("scores_all.pkl")
-    plot_scores(scores_all, file_name='learning_curves', ext='.png')
+    # load data
+    print('processing {} ... '.format(data_dir))
+    subject = data_dir.split('_')[2]
+    X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
+    assert signal_type == signal_type_data
 
-    # plot the results for each subject separately
-    for subject in np.unique(scores_all['subject']):
-        scores = scores_all[scores_all['subject'] == subject]
-        plot_scores(scores, file_name='learning_curves_' + subject)
+    # define models
+    # Lasso lars
+    model = make_pipeline(
+            StandardScaler(with_mean=False),
+            linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
+                                     normalize=False, fit_intercept=False)
+        )
+
+    lasso_lars = SparseRegressor(L, parcel_indices, model)
+    # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
+
+    # Lead COrrelate
+    lc = LeadCorrelate(L, parcel_indices)
+
+    # TODO: make k-mean clustering settings here
+    # models = {'': None, 'lead correlate': lc, 'lasso lars': lasso_lars}
+    models = {'lead correlate': lc, 'lasso lars': lasso_lars}
+
+    scores_all = make_learning_curve_for_all(X, y, models)
+    scores_save_file = os.path.join(data_dir, "scores_all.pkl")
+    scores_all.to_pickle(scores_save_file)
+
+    print(scores_all.tail(len(models)))
+
+    if plot_data:
+        scores_all = pd.read_pickle(scores_save_file)
+        plot_scores(scores_all, file_name='learning_curves', ext='.png')
+
+        subject = np.unique(scores_all['subject'])
+        assert len(subject) == 1
+        scores = scores_all[scores_all['subject'] == subject[0]]
+        plot_scores(scores, file_name='learning_curves_' + subject[0])
