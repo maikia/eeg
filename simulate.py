@@ -124,7 +124,6 @@ def init_signal(parcels, raw_fname, fwd_fname, subject,
 
 def targets_to_sparse(target_list, parcel_names):
     targets = []
-
     for idx, tar in enumerate(target_list):
         row = np.zeros(len(parcel_names))
         for t in tar:
@@ -194,15 +193,16 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     assert os.path.exists(fwd_fname)
 
     # PREPARE PARCELS
-    # save label names with their corresponding vertices
-    parcel_names = [parcel.name for parcel in parcels_subject]
-    parcel_names = np.array(parcel_names)
 
     parcel_vertices = {}
     for idx, parcel in enumerate(parcels_subject, 1):
         parcel_name = str(idx) + parcel.name[-3:]
         parcel_vertices[parcel_name] = parcel.vertices
         parcel.name = parcel_name
+
+    # save label names with their corresponding vertices
+    parcel_names = [parcel.name for parcel in parcels_subject]
+    parcel_names = np.array(parcel_names)
 
     # with open(os.path.join(data_dir_specific,
     #                       'labels.pickle'), 'wb') as outfile:
@@ -301,11 +301,11 @@ if __name__ == "__main__":
     n_parcels = 20  # number of parcels per hemisphere
     # (will be reduced by corpus callosum)
     random_state = 42
-    n_samples = 1000
+    n_samples = 500
     hemi = 'both'
     n_parcels_max = 3
     signal_type = 'grad'
-    make_new = False  # True if rerun all, even already existing dirs
+    make_new = True  # True if rerun all, even already existing dirs
 
     data_path = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_path, 'subjects')
