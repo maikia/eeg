@@ -41,13 +41,14 @@ def plot_sources_at_activation(X, y, signal_type, fig_dir='figs', ext='.png'):
         os.mkdir(fig_dir)
 
     data_path = mne.datasets.sample.data_path()
-    fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
 
+    fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
     info = mne.read_evokeds(fname)[0].pick(signal_type).info
 
     n_classes = y.shape[1]
     fig, axes = plt.subplots(5, n_classes, figsize=(16, 4))
 
+    X = X.loc[:, X.columns != 'subject']
     for k in range(n_classes):
         X_k = X.iloc[np.argmax(y, axis=1) == k]
         info_temp = info.copy()
