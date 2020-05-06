@@ -29,6 +29,7 @@ if data_dir_all in data_dirs:
     data_dirs.remove(data_dir_all)
 assert data_dir_all not in data_dirs
 
+sbj_id = 0
 # initialize the files in the data_dir_all
 all_X_file = os.path.join(data_dir_all, 'X.csv')
 for idx, subject_path in enumerate(data_dirs):
@@ -50,7 +51,7 @@ for idx, subject_path in enumerate(data_dirs):
     subject_data['subject'] = subject_name
     target_subject = sparse.load_npz(os.path.join(subject_path, 'target.npz'))
 
-    if idx == 0:
+    if sbj_id == 0:
         # create new .csv file
         subject_data.to_csv(all_X_file, header=True, index=False)
         target_all = target_subject
@@ -69,8 +70,9 @@ for idx, subject_path in enumerate(data_dirs):
                     os.path.join(data_dir_all,
                                  subject_name + '_labels.npz')
                     )
+    sbj_id += 1
 
 # save the target
 save_npz(os.path.join(data_dir_all, 'target.npz'), target_all)
 print('{} samples from {} subjects were saved in the {}'.format(
-      target_all.shape[0], idx+1, data_dir_all))
+      target_all.shape[0], sbj_id, data_dir_all))
