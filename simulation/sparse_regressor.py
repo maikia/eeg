@@ -29,9 +29,11 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         X = X.reset_index(drop=True)
 
         betas = np.empty((len(X), 0)).tolist()
-        for subj_idx in np.unique(X['subject']):
+        for subj_idx in np.unique(X['subject_id']):
             l_used = self.lead_field[subj_idx]
-            X_used = X[X['subject'] == subj_idx].loc[:, X.columns != 'subject']
+
+            X_used = X[X['subject_id'] == subj_idx]
+            X_used = X_used.iloc[:,:-2]
             model.fit(l_used, X_used.T)
 
             for idx, idx_used in enumerate(X_used.index.values):

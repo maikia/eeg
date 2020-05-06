@@ -38,7 +38,8 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # parcels and plots their score depending on number of samples used.
 
     # number of samples selected at each run
-
+    if model_name == 'K-neighbours(3)':
+        X = X.loc[:, X.columns != 'subject']
     X_train, X_test, y_train, y_test = \
         train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -53,6 +54,7 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
         n_samples_test = min(len(X_test), n_samples_train)
         print('fitting {} using {} train samples, {} test samples'.format(
               model_name, n_samples_train, n_samples_test))
+
         model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
 
         score = model.score(X_test.head(n_samples_test),
@@ -101,15 +103,16 @@ def load_data(data_dir):
     X = pd.read_csv(os.path.join(data_dir, 'X.csv'))
 
     if subject_name == 'all':
-        X['subject'] = X['subject'].map(subj_dict)
+        X['subject_id'] = X['subject'].map(subj_dict)
     else:
-        X['subject'] = idx
-    X.astype({'subject': 'int32'}).dtypes
+        X['subject'] = subject_name
+        X['subject id'] = idx
+
+    X.astype({'subject_id': 'int32'}).dtypes
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
 
     # Scale data to avoid tiny numbers
-    X.loc[:, X.columns != 'subject'] /= np.max(X.loc[:,
-                                                     X.columns != 'subject'])
+    X.iloc[:,:-2] /= np.max(X.iloc[:,:-2])
     assert y.shape[0] == X.shape[0]
     return X, y, L, parcel_indices_leadfield, signal_type
 
@@ -197,12 +200,16 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = False
+    plot_data = True
+    calc_scores_for_lc = False
+    calc_learning_rate = False
+
     data_dir = 'data/data_grad_all_26_3'
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
     n_samples_grid = [300]
+    subject = data_dir.split('_')[-3]
 
     # load data
     print('processing {} ... '.format(data_dir))
@@ -228,32 +235,54 @@ if __name__ == "__main__":
     clf = KNeighborsClassifier(3)
     kneighbours = MultiOutputClassifier(clf, n_jobs=N_JOBS)
 
-    # calculate various scores for Lead Correlate model
-    if n_samples_grid != 'auto':
-        n_samples = n_samples_grid[-1]
-    else:
-        n_samples = -1
-    calc_scores_for_model(X, y, model=lc, n_samples=n_samples)
+    if calc_scores_for_lc:
+        # calculate various scores for Lead Correlate model
+        if n_samples_grid != 'auto':
+            n_samples = n_samples_grid[-1]
+        else:
+            n_samples = -1
+        calc_scores_for_model(X, y, model=lc, n_samples=n_samples)
 
-    # make learning curve for selected models
-    models = {'lead correlate': lc, 'lasso lars': lasso_lars,
-              'K-neighbours(3)': kneighbours}
-    scores_all = make_learning_curve_for_all(X, y, models)
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
-    scores_all.to_pickle(scores_save_file)
+    if calc_learning_rate:
+        # make learning curve for selected models
+        models = {'lead correlate': lc, 'lasso lars': lasso_lars,
+                  'K-neighbours(3)': kneighbours}
+        scores_all = make_learning_curve_for_all(X, y, models)
+        scores_all.to_pickle(scores_save_file)
 
-    print(scores_all.tail(len(models)))
+        print(scores_all.tail(len(models)))
 
     plot_data = plot_data and visualize_data
     if plot_data:
-        # TODO: update this function, not working atm
+        # plot sources at the activation
         plot_sources_at_activation(X, y, signal_type)
 
     if plot_data:
+        # plot scores
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-        subject = np.unique(scores_all['subject'])
-        assert len(subject) == 1
-        scores = scores_all[scores_all['subject'] == subject[0]]
-        plot_scores(scores, file_name='learning_curves_' + subject[0])
+    if plot_data:
+        # plot parcels
+        from simulation.plot_signal import visualize_brain
+        import pdb; pdb.set_trace()
+
+        # fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
+        #            str(n_parcels_max))
+        subject = 'CC110033'
+        import mne
+        from surfer import Brain
+        data_path = 'mne_data/MNE-sample-data'  #  'mne.datasets.sample.data_path()
+        subjects_dir = os.path.join(data_path, 'subjects')
+        hemi = 'both'
+        brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
+                  cortex='low_contrast', background='white') #, size=(800, 600))
+        # visualize_brain('CC110033', hemi, 'test', subjects_dir,
+        # parcels_subject)
+        labels = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                         allow_pickle=True)
+        labels = labels['arr_0']
+        # parcel = parcels_subject['1-lh']
+        for parcel in parcels_selected:
+            brain.add_label(labels[0], alpha=1) #, color=parcel.color)

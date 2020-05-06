@@ -305,7 +305,7 @@ if __name__ == "__main__":
     hemi = 'both'
     n_parcels_max = 3
     signal_type = 'grad'
-    make_new = True  # True if rerun all, even already existing dirs
+    make_new = False  # True if rerun all, even already existing dirs
 
     data_path = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_path, 'subjects')
