@@ -22,6 +22,8 @@ import config
 if os.environ.get('DISPLAY'):
     # display exists
     N_JOBS = 1
+    # NOTE: all the directories should be copied from the server to run the
+    # subjects other than sample (path specs: config.py)
 else:
     # running on the server, no display
     N_JOBS = -1
@@ -145,7 +147,7 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
 
 def simulate_for_subject(subject, data_path, parcels_subject,
                          n_samples=2000, n_parcels_max=3, signal_type='grad',
-                         make_new=True, random_state=42):
+                         random_state=42, data_dir_specific='data'):
     """ simulates the data for a given subject. It generates and saves the
     following:
     X.csv: data of the shape n_samples x n_electrodes
@@ -170,10 +172,6 @@ def simulate_for_subject(subject, data_path, parcels_subject,
         simulation. The number of sources will be between 1 and n_parcels_max
     signal_type : 'string', type of the signal. It can be 'eeg', 'meg', 'mag'
     or 'grad'
-    make_new : Boolean, if True the simulation will be done and all the
-        previous simulations with the same parameters will be overwritten. If
-        set to False the simulation will be performed only if there is no
-        previous directory found with the same parameters
 
     Returns
     -------
@@ -181,28 +179,6 @@ def simulate_for_subject(subject, data_path, parcels_subject,
         Returns an array of ones.
 
         """
-
-    data_dir = 'data'
-
-    # PATHS
-    # make all the paths
-    len_parcels = len(parcels_subject)
-    case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
-                     + '_' + str(n_parcels_max))
-    data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
-
-    # check if the data directory for the subject already exists
-    if not os.path.isdir(data_dir):
-        os.mkdir(data_dir)
-
-    if os.path.isdir(data_dir_specific) and not make_new:
-        # path exists, skip it
-        print('skipping existing directory: ' + data_dir_specific)
-        return data_dir_specific
-    elif not os.path.isdir(data_dir_specific):
-        os.mkdir(data_dir_specific)
-    assert os.path.exists(data_dir_specific)
-    print('working on ' + data_dir_specific)
 
     # Here we are creating the directories/files for left and right hemisphere
     if subject == 'sample':
@@ -226,11 +202,16 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     for idx, parcel in enumerate(parcels_subject, 1):
         parcel_name = str(idx) + parcel.name[-3:]
         parcel_vertices[parcel_name] = parcel.vertices
+        parcel.name = parcel_name
 
-    with open(os.path.join(data_dir_specific,
-                           'labels.pickle'), 'wb') as outfile:
-        pickle.dump(parcel_vertices, outfile)
-    outfile.close()
+    # with open(os.path.join(data_dir_specific,
+    #                       'labels.pickle'), 'wb') as outfile:
+    #    pickle.dump(parcel_vertices, outfile)
+    # outfile.close()
+
+    # save the labels for the subject
+    np.savez(os.path.join(data_dir_specific, 'labels.npz'),
+             parcels_subject)
 
     # SIMULATE DATA
     # prepare train and test data
@@ -320,35 +301,55 @@ if __name__ == "__main__":
     n_parcels = 20  # number of parcels per hemisphere
     # (will be reduced by corpus callosum)
     random_state = 42
-    n_samples = 200
+    n_samples = 1000
     hemi = 'both'
     n_parcels_max = 3
-    plot_data = True
+    signal_type = 'grad'
+    make_new = False  # True if rerun all, even already existing dirs
 
     data_path = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_path, 'subjects')
     parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
-                                                n_parcels=n_parcels,
-                                                random_state=random_state)
+                                                  n_parcels=n_parcels,
+                                                  random_state=random_state)
 
-    subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101', 'CC110187',
-                    'CC110411', 'CC110606', 'CC112141', 'CC120049', 'CC120061',
-                    'CC120120', 'CC120182', 'CC120264', 'CC120309', 'CC120313',
-                    'CC120319', 'CC120376', 'CC120469', 'CC120550']
+    subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101',
+                     'CC110187', 'CC110411', 'CC110606', 'CC112141',
+                     'CC120049', 'CC120061', 'CC120120', 'CC120182',
+                     'CC120264', 'CC120309', 'CC120313', 'CC120319',
+                     'CC120376', 'CC120469', 'CC120550']
 
+    data_dir = 'data'
     for subject in subject_names:
         # TODO: parallel works only for a single subject, then hangs, repair
+
         # morph fsaverage labels to the subject we are using
         parcels_subject = mne.morph_labels(parcels_fsaverage, subject,
                                            'fsaverage', subjects_dir, 'white')
 
-        data_dir_specific = simulate_for_subject(subject, data_path,
-                                                 parcels_subject,
-                                                 n_parcels_max=n_parcels_max,
-                                                 n_samples=n_samples,
-                                                 make_new=False,
-                                                 random_state=random_state)
+        # PATHS
+        # make all the paths
+        len_parcels = len(parcels_subject)
+        case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
+                         + '_' + str(n_parcels_max))
+        data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
 
-        if plot_data:
-            fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
-                        str(n_parcels_max))
+        # check if the data directory for the subject already exists
+        if not os.path.isdir(data_dir):
+            os.mkdir(data_dir)
+
+        if os.path.isdir(data_dir_specific) and not make_new:
+            # path exists, skip it
+            print('skipping existing directory: ' + data_dir_specific)
+            continue
+        elif not os.path.isdir(data_dir_specific):
+            os.mkdir(data_dir_specific)
+        assert os.path.exists(data_dir_specific)
+        print('working on ' + data_dir_specific)
+
+        data_dir_specific = simulate_for_subject(subject, data_path,
+            parcels_subject, n_parcels_max=n_parcels_max, n_samples=n_samples,
+            random_state=random_state,
+            data_dir_specific=data_dir_specific, signal_type=signal_type)
+
+
