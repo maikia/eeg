@@ -32,6 +32,17 @@ assert data_dir_all not in data_dirs
 # initialize the files in the data_dir_all
 all_X_file = os.path.join(data_dir_all, 'X.csv')
 for idx, subject_path in enumerate(data_dirs):
+    # check if all the necessary files are present
+    labels_exist = os.path.exists(os.path.join(subject_path, 'labels.npz'))
+    target_exists = os.path.exists(os.path.join(subject_path, 'target.npz'))
+    X_exists = os.path.exists(os.path.join(subject_path, 'X.csv'))
+    lf_exists = os.path.exists(os.path.join(subject_path, 'lead_field.npz'))
+
+    if not (labels_exist and target_exists and X_exists and lf_exists):
+        print('skipping {}. not all the necessary files are present'.format(
+              subject_path))
+        continue
+
     subject_info = subject_path.split('_')
     subject_name = subject_info[2]
     print('adding subject ' + subject_name)
@@ -47,12 +58,16 @@ for idx, subject_path in enumerate(data_dirs):
         # append the data
         subject_data.to_csv(all_X_file, mode='a', header=False, index=False)
         target_all = sparse.vstack((target_all, target_subject))
-    shutil.copyfile(os.path.join(subject_path, 'labels.pickle'),
-                    os.path.join(data_dir_all, subject_name + '_labels.pickle')
-                    )
+    # shutil.copyfile(os.path.join(subject_path, 'labels.pickle'),
+    #                os.path.join(data_dir_all, subject_name + '_labels.pickle')
+    #                )
     shutil.copyfile(os.path.join(subject_path, 'lead_field.npz'),
                     os.path.join(data_dir_all,
                                  subject_name + '_lead_field.npz')
+                    )
+    shutil.copyfile(os.path.join(subject_path, 'labels.npz'),
+                    os.path.join(data_dir_all,
+                                 subject_name + '_labels.npz')
                     )
 
 # save the target
