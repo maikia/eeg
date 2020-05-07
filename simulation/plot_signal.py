@@ -92,3 +92,23 @@ def plot_samples_vs_score(scores_all, data_samples, fig_dir='figs',
     plt.xlabel('number of samples used')
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, 'score_data' + ext))
+
+def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
+                             colors = {'pred': 'y', 'true': 'b',
+                                       'overlap': 'g'}):
+    # fig_name = (subject_name + '_' + str(len(parcels_subject)) + '_' +
+    #            str(n_parcels_max))
+
+    data_path = 'mne_data/MNE-sample-data'
+    subjects_dir = os.path.join(data_path, 'subjects')
+    hemi = 'both'
+    brain = Brain(subject_name, hemi, 'inflated', subjects_dir=subjects_dir,
+                  cortex='low_contrast', background='white') #, size=(800, 600))
+
+    for parcel in labels_pred:
+        brain.add_label(parcel, alpha=1, color=colors['pred'])
+    for parcel in labels_true:
+        brain.add_label(parcel, alpha=1, color=colors['true'])
+    for parcel in set(labels_pred) & set(labels_true):
+        brain.add_label(parcel, alpha=1, color=colors['overlap'])
+    import pdb; pdb.set_trace()

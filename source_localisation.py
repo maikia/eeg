@@ -24,12 +24,49 @@ from sklearn.model_selection import cross_validate, train_test_split
 
 if os.environ.get('DISPLAY'):  # display exists
     from simulation.plot_signal import plot_sources_at_activation
+    from simulation.plot_signal import plot_y_pred_true_parcels
     visualize_data = True
     N_JOBS = 1
 else:
     # running on the server, no display
     visualize_data = False
     N_JOBS = -1
+
+def display_true_pred_parcels(X, y, data_dir, model, model_name='',
+                              n_samples='all'):
+    # draw a brain with y_pred in red and y_test in green
+
+    if model_name == 'K-neighbours(3)':
+        print('this function does not work with k-neighbours')
+        return
+
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, test_size=0.2, random_state=42)
+    if n_samples != 'all':
+        len_train, len_test = len(X_train), len(X_test)
+        X_train = X_train.head(min(n_samples, len_train))
+        y_train = y_train[:min(n_samples, len_train)]
+        X_test = X_test.head(min(n_samples, len_test))
+        y_test = y_test[:min(n_samples, len_test)]
+
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+    labels =[[] for i in range(len(np.unique(X_test['subject'])))]
+    for idx, (y_p, y_t) in enumerate(zip(y_pred, y_test)):
+        x = X_test.iloc[idx]
+        subject = x['subject']
+        subject_id = x['subject_id']
+
+        if len(labels[subject_id]) == 0:
+            labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                               allow_pickle=True)
+            labels_x = labels_x['arr_0']
+            labels[subject_id] = labels_x
+
+        idx_lab_pred = labels[subject_id][y_p == 1]
+        idx_lab_true = labels[subject_id][y_t == 1]
+
+        plot_y_pred_true_parcels(subject, idx_lab_pred, idx_lab_true)
 
 
 def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
@@ -265,24 +302,6 @@ if __name__ == "__main__":
 
     if plot_data:
         # plot parcels
-        from simulation.plot_signal import visualize_brain
-        import pdb; pdb.set_trace()
-
-        # fig_name = (subject + '_' + str(len(parcels_subject)) + '_' +
-        #            str(n_parcels_max))
-        subject = 'CC110033'
-        import mne
-        from surfer import Brain
-        data_path = 'mne_data/MNE-sample-data'  #  'mne.datasets.sample.data_path()
-        subjects_dir = os.path.join(data_path, 'subjects')
-        hemi = 'both'
-        brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
-                  cortex='low_contrast', background='white') #, size=(800, 600))
-        # visualize_brain('CC110033', hemi, 'test', subjects_dir,
-        # parcels_subject)
-        labels = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-                         allow_pickle=True)
-        labels = labels['arr_0']
-        # parcel = parcels_subject['1-lh']
-        for parcel in parcels_selected:
-            brain.add_label(labels[0], alpha=1) #, color=parcel.color)
+        display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
+                                  model_name='lasso lars',
+                                  n_samples=300)
