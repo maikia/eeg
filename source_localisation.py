@@ -32,6 +32,7 @@ else:
     visualize_data = False
     N_JOBS = -1
 
+
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
                               n_samples='all'):
     # draw a brain with y_pred in red and y_test in green
@@ -51,7 +52,7 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
 
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
-    labels =[[] for i in range(len(np.unique(X_test['subject'])))]
+    labels = [[] for i in range(len(np.unique(X_test['subject'])))]
     for idx, (y_p, y_t) in enumerate(zip(y_pred, y_test)):
         x = X_test.iloc[idx]
         subject = x['subject']
@@ -149,7 +150,7 @@ def load_data(data_dir):
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
 
     # Scale data to avoid tiny numbers
-    X.iloc[:,:-2] /= np.max(X.iloc[:,:-2])
+    X.iloc[:, :-2] /= np.max(X.iloc[:, :-2])
     assert y.shape[0] == X.shape[0]
     return X, y, L, parcel_indices_leadfield, signal_type
 

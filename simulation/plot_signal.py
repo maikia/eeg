@@ -48,7 +48,7 @@ def plot_sources_at_activation(X, y, signal_type, fig_dir='figs', ext='.png'):
     n_classes = y.shape[1]
     fig, axes = plt.subplots(5, n_classes, figsize=(16, 4))
 
-    X = X.iloc[:,:-2]
+    X = X.iloc[:, :-2]
     for k in range(n_classes):
         X_k = X.iloc[np.argmax(y, axis=1) == k]
         info_temp = info.copy()
@@ -93,9 +93,10 @@ def plot_samples_vs_score(scores_all, data_samples, fig_dir='figs',
     plt.tight_layout()
     plt.savefig(os.path.join(fig_dir, 'score_data' + ext))
 
+
 def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
-                             colors = {'pred': 'y', 'true': 'b',
-                                       'overlap': 'g'}):
+                             colors={'pred': 'y', 'true': 'b',
+                                     'overlap': 'g'}):
     # fig_name = (subject_name + '_' + str(len(parcels_subject)) + '_' +
     #            str(n_parcels_max))
 
@@ -103,7 +104,7 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
     subjects_dir = os.path.join(data_path, 'subjects')
     hemi = 'both'
     brain = Brain(subject_name, hemi, 'inflated', subjects_dir=subjects_dir,
-                  cortex='low_contrast', background='white') #, size=(800, 600))
+                  cortex='low_contrast', background='white')
 
     for parcel in labels_pred:
         brain.add_label(parcel, alpha=1, color=colors['pred'])
@@ -111,4 +112,5 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
         brain.add_label(parcel, alpha=1, color=colors['true'])
     for parcel in set(labels_pred) & set(labels_true):
         brain.add_label(parcel, alpha=1, color=colors['overlap'])
-    import pdb; pdb.set_trace()
+    import pdb
+    pdb.set_trace()
