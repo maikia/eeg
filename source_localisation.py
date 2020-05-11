@@ -53,6 +53,27 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     labels = [[] for i in range(len(np.unique(X_test['subject'])))]
+
+
+
+
+    # calculate distance matrix
+    from simulation.parcels import dist_calc
+    import nibabel as nib
+    idx = 0
+    x = X_test.iloc[idx]
+    subject = x['subject']
+    subject_id = x['subject_id']
+    base_dir = 'mne_data/MNE-sample-data/subjects/' + subject
+    surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'surf/lh.pial'))
+
+    labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                               allow_pickle=True)
+
+    dist_calc(surf=surf, cortex=None, source_nodes=labels_x, dist_type = "min")
+
+
+
     for idx, (y_p, y_t) in enumerate(zip(y_pred, y_test)):
         x = X_test.iloc[idx]
         subject = x['subject']
@@ -238,7 +259,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     calc_scores_for_lc = False
     calc_learning_rate = False
 
@@ -301,8 +322,10 @@ if __name__ == "__main__":
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-    if plot_data:
+    if True: # plot_data:
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
                                   n_samples=300)
+
+
