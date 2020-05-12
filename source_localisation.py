@@ -70,9 +70,9 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
     labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
                                allow_pickle=True)
 
-    labels_x
+    labels_x = labels_x['arr_0']
     labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
-    dist_calc(surf=surf, cortex=None, source_nodes=labels_x_lh, dist_type = "min")
+    distance_matrix_lh = dist_calc(surf=surf, cortex=None, source_nodes=labels_x_lh, dist_type = "min")
 
 
 

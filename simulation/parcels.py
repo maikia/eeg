@@ -93,11 +93,14 @@ def dist_calc(surf, cortex, source_nodes, dist_type = "min"):
     #)
     # take only every n-th vertex
     nv = 20
-    previous_source = source_nodes[0].vertices.astype('<i4')
+    # TODO: parallel?
+    # NOTE: very slow
     for i in range(len(source_nodes)-1):
+        previous_source = source_nodes[i].vertices.astype('<i4')
+        print('i: {}/{}'.format(i+1, len(source_nodes)-1))
         for j in range(i+1, len(source_nodes)):
-            print(i)
-            print(j)
+            
+            print('j: {}/{}'.format(j+1, len(source_nodes)))
 
             # computes the distance between the targets and the source (gives as
             # many values as targets)
@@ -107,10 +110,5 @@ def dist_calc(surf, cortex, source_nodes, dist_type = "min"):
                        target_indices=np.array(next_source, ndmin=1)[::nv])
             min_dist = np.min(distance)
             distance_matrix[i, j] = distance_matrix[j, i] = min_dist
-            previous_source = next_source
-        import pdb; pdb.set_trace()
-
-    # data = gdist.compute_gdist(vertices, new_triangles, source_indices = np.array(sn_converted)) #, target_indices = sn_converted[2])
-    import pdb; pdb.set_trace()
 
     return distance_matrix
