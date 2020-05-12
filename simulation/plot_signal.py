@@ -100,7 +100,8 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
     # fig_name = (subject_name + '_' + str(len(parcels_subject)) + '_' +
     #            str(n_parcels_max))
 
-    data_path = 'mne_data/MNE-sample-data'
+    mne_dir = mne.get_config('MNE_DATASETS_SAMPLE_PATH')
+    data_path = mne_dir + '/MNE-sample-data'
     subjects_dir = os.path.join(data_path, 'subjects')
     hemi = 'both'
     brain = Brain(subject_name, hemi, 'inflated', subjects_dir=subjects_dir,

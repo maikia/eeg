@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 import pandas as pd
-import pickle
 
 from scipy.sparse import csr_matrix
 from scipy.sparse import save_npz
@@ -308,8 +307,9 @@ if __name__ == "__main__":
     make_new = False  # True if rerun all, even already existing dirs
 
     data_path = mne.datasets.sample.data_path()
-    subjects_dir = os.path.join(data_path, 'subjects')
-    parcels_fsaverage = make_parcels_on_fsaverage(subjects_dir,
+    sample_subjects_dir = os.path.join(data_path, 'subjects')
+    camcan_subjects_dir = '/storage/store/data/camcan-mne/freesurfer'
+    parcels_fsaverage = make_parcels_on_fsaverage(sample_subjects_dir,
                                                   n_parcels=n_parcels,
                                                   random_state=random_state)
 
@@ -322,6 +322,11 @@ if __name__ == "__main__":
     data_dir = 'data'
     for subject in subject_names:
         # TODO: parallel works only for a single subject, then hangs, repair
+
+        if subject.startswith('CC'):
+            subjects_dir = camcan_subjects_dir
+        else:
+            subjects_dir = sample_subjects_dir
 
         # morph fsaverage labels to the subject we are using
         parcels_subject = mne.morph_labels(parcels_fsaverage, subject,
@@ -347,9 +352,8 @@ if __name__ == "__main__":
         assert os.path.exists(data_dir_specific)
         print('working on ' + data_dir_specific)
 
-        data_dir_specific = simulate_for_subject(subject, data_path,
+        data_dir_specific = simulate_for_subject(
+            subject, data_path,
             parcels_subject, n_parcels_max=n_parcels_max, n_samples=n_samples,
             random_state=random_state,
             data_dir_specific=data_dir_specific, signal_type=signal_type)
-
-
