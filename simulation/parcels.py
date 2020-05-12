@@ -97,10 +97,10 @@ def dist_calc(surf, cortex, source_nodes, dist_type = "min"):
     # NOTE: very slow
     for i in range(len(source_nodes)-1):
         previous_source = source_nodes[i].vertices.astype('<i4')
-        print('i: {}/{}'.format(i+1, len(source_nodes)-1))
+        # print('i: {}/{}'.format(i, len(source_nodes)-1), end =" ")
         for j in range(i+1, len(source_nodes)):
-            
-            print('j: {}/{}'.format(j+1, len(source_nodes)))
+            loading =  "i: " + str(i) + '/' + str(len(source_nodes)) + ':' + "." * j + ' ' * (len(source_nodes)-j-1) + ';'
+            print(loading, end="\r")
 
             # computes the distance between the targets and the source (gives as
             # many values as targets)
