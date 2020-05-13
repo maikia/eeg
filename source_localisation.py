@@ -13,6 +13,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from simulation.lead_correlate import LeadCorrelate
+from simulation.parcels import dist_calc
 from simulation.sparse_regressor import SparseRegressor
 import simulation.metrics as met
 
@@ -32,6 +33,54 @@ else:
     visualize_data = False
     N_JOBS = -1
 
+
+def calc_distance_matrix(data_dir, subjects):
+    # calculates distance matrix
+    # TODO: subdivide to multiple functions
+    import nibabel as nib
+    idx = 0
+
+    for subject in subjects:
+        # only left hemisphere for now
+        base_dir = 'mne_data/MNE-sample-data/subjects/' + subject
+        surf_lh = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                               'surf/lh.pial'))
+        surf_rh = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                               'surf/rh.pial'))
+        labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                               allow_pickle=True)
+
+        labels_x = labels_x['arr_0']
+        labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
+        labels_x_rh = [s for s in labels_x if s.hemi == 'rh']
+        distance_matrix_lh = dist_calc(surf=surf_lh, cortex=None,
+                                   source_nodes=labels_x_lh, dist_type = "min")
+        distance_matrix_rh = dist_calc(surf=surf_rh, cortex=None,
+                                   source_nodes=labels_x_rh, dist_type = "min")
+        save_path = os.path.join(data_dir, subject + '_dist_matrix.npz')
+        np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
+                            dist_matrix_rh=distance_matrix_rh)
+    '''
+    # TO plot:
+    import pdb; pdb.set_trace()
+    mne_dir = mne.get_config('MNE_DATASETS_SAMPLE_PATH')
+    data_path = mne_dir + '/MNE-sample-data'
+    # subjects_dir = os.path.join(data_path, 'subjects')
+    subjects_dir = 'mne_data/MNE-sample-data/subjects/'
+    hemi = 'both'
+    brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
+                  cortex='low_contrast', background='white')
+    idx = 0
+    distance_matrix_lh_norm = distance_matrix_lh/np.max(distance_matrix_lh)
+    brain.add_label(labels_x_lh[idx], alpha=1, color='blue') #str(1 -
+    (distance_matrix_lh_norm[0, idx])))
+    '''
+
+def calc_distance_matrix_subject():
+    pass
+
+def calc_dist_matrix_labels():
+    pass
 
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
                               n_samples='all'):
@@ -53,29 +102,6 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
     model.fit(X_train, y_train)
     y_pred = model.predict(X_test)
     labels = [[] for i in range(len(np.unique(X_test['subject'])))]
-
-
-
-
-    # calculate distance matrix
-    from simulation.parcels import dist_calc
-    import nibabel as nib
-    idx = 0
-    x = X_test.iloc[idx]
-    subject = x['subject']
-    subject_id = x['subject_id']
-    base_dir = 'mne_data/MNE-sample-data/subjects/' + subject
-    surf = nib.freesurfer.read_geometry(os.path.join(base_dir, 'surf/lh.pial'))
-
-    labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-                               allow_pickle=True)
-
-    labels_x = labels_x['arr_0']
-    labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
-    distance_matrix_lh = dist_calc(surf=surf, cortex=None,
-                                   source_nodes=labels_x_lh, dist_type = "min")
-    import pdb; pdb.set_trace()
-
 
     for idx, (y_p, y_t) in enumerate(zip(y_pred, y_test)):
         x = X_test.iloc[idx]
@@ -326,10 +352,10 @@ if __name__ == "__main__":
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-    if True: # plot_data:
+    if plot_data:
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
                                   n_samples=300)
 
-
+    calc_distance_matrix(data_dir, np.unique(X['subject']))
