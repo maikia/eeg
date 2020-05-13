@@ -301,6 +301,7 @@ if __name__ == "__main__":
         # calculate various scores for Lead Correlate model
         if n_samples_grid != 'auto':
             n_samples = n_samples_grid[-1]
+            # n_samples = 10
         else:
             n_samples = -1
         calc_scores_for_model(X, y, model=lc, n_samples=n_samples)
