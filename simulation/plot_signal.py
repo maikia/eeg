@@ -99,9 +99,10 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
                                      'overlap': 'g'}):
     # fig_name = (subject_name + '_' + str(len(parcels_subject)) + '_' +
     #            str(n_parcels_max))
-
-    mne_dir = mne.get_config('MNE_DATASETS_SAMPLE_PATH')
-    data_path = mne_dir + '/MNE-sample-data'
+    # TODO: make the switch automatic depending on who/where it runs
+    data_path = 'mne_data/MNE-sample-data'  # Maja
+    # mne_dir = mne.get_config('MNE_DATASETS_SAMPLE_PATH')  # Alex
+    # data_path = mne_dir + '/MNE-sample-data'
     subjects_dir = os.path.join(data_path, 'subjects')
     hemi = 'both'
     brain = Brain(subject_name, hemi, 'inflated', subjects_dir=subjects_dir,
