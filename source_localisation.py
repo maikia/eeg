@@ -12,16 +12,15 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
-from simulation.lead_correlate import LeadCorrelate
-from simulation.parcels import dist_calc
-from simulation.sparse_regressor import SparseRegressor
-import simulation.metrics as met
-
-
 from sklearn.metrics import hamming_loss
 from sklearn.metrics import jaccard_score
 from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
+
+from simulation.lead_correlate import LeadCorrelate
+from simulation.parcels import calc_dist_matrix_for_sbj
+from simulation.sparse_regressor import SparseRegressor
+import simulation.metrics as met
 
 if os.environ.get('DISPLAY'):  # display exists
     from simulation.plot_signal import plot_sources_at_activation
@@ -36,30 +35,25 @@ else:
 
 def calc_distance_matrix(data_dir, subjects):
     # calculates distance matrix
-    # TODO: subdivide to multiple functions
-    import nibabel as nib
     idx = 0
 
     for subject in subjects:
         # only left hemisphere for now
-        base_dir = 'mne_data/MNE-sample-data/subjects/' + subject
-        surf_lh = nib.freesurfer.read_geometry(os.path.join(base_dir,
-                                               'surf/lh.pial'))
-        surf_rh = nib.freesurfer.read_geometry(os.path.join(base_dir,
-                                               'surf/rh.pial'))
-        labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-                               allow_pickle=True)
+        save_path_lh = os.path.join(data_dir, subject + '_dist_matrix_lh.csv')
+        save_path_rh = os.path.join(data_dir, subject + '_dist_matrix_rh.csv')
+        if os.path.exists(save_path_lh) and os.path.exists(save_path_rh):
+            continue
+        else:
+            print('calculating distance matrix for {}'.format(subject))
 
-        labels_x = labels_x['arr_0']
-        labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
-        labels_x_rh = [s for s in labels_x if s.hemi == 'rh']
-        distance_matrix_lh = dist_calc(surf=surf_lh, cortex=None,
-                                   source_nodes=labels_x_lh, dist_type = "min")
-        distance_matrix_rh = dist_calc(surf=surf_rh, cortex=None,
-                                   source_nodes=labels_x_rh, dist_type = "min")
-        save_path = os.path.join(data_dir, subject + '_dist_matrix.npz')
-        np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
-                            dist_matrix_rh=distance_matrix_rh)
+        dist_matrix = calc_dist_matrix_for_sbj(data_dir, subject)
+        dist_matrix_lh, dist_matrix_rh = dist_matrix
+
+        #np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
+        #                    dist_matrix_rh=distance_matrix_rh)
+
+        dist_matrix_lh.to_csv(save_path_lh)
+        dist_matrix_rh.to_csv(save_path_rh)
     '''
     # TO plot:
     import pdb; pdb.set_trace()
@@ -75,12 +69,6 @@ def calc_distance_matrix(data_dir, subjects):
     brain.add_label(labels_x_lh[idx], alpha=1, color='blue') #str(1 -
     (distance_matrix_lh_norm[0, idx])))
     '''
-
-def calc_distance_matrix_subject():
-    pass
-
-def calc_dist_matrix_labels():
-    pass
 
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
                               n_samples='all'):
