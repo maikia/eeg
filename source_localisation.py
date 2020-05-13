@@ -35,7 +35,6 @@ else:
 
 def calc_distance_matrix(data_dir, subjects):
     # calculates distance matrix
-    idx = 0
 
     for subject in subjects:
         # only left hemisphere for now
@@ -49,7 +48,7 @@ def calc_distance_matrix(data_dir, subjects):
         dist_matrix = calc_dist_matrix_for_sbj(data_dir, subject)
         dist_matrix_lh, dist_matrix_rh = dist_matrix
 
-        #np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
+        # np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
         #                    dist_matrix_rh=distance_matrix_rh)
 
         dist_matrix_lh.to_csv(save_path_lh)
@@ -70,12 +69,13 @@ def calc_distance_matrix(data_dir, subjects):
     (distance_matrix_lh_norm[0, idx])))
     '''
 
+
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
                               n_samples='all'):
     # draw a brain with y_pred in red and y_test in green
 
     if model_name == 'K-neighbours(3)':
-        print('this function does not work with k-neighbours')
+        print('this function does not work with display true pred parcels')
         return
 
     X_train, X_test, y_train, y_test = \
