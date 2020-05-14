@@ -25,6 +25,7 @@ import simulation.metrics as met
 if os.environ.get('DISPLAY'):  # display exists
     from simulation.plot_signal import plot_sources_at_activation
     from simulation.plot_signal import plot_y_pred_true_parcels
+    from simulation.plot_signal import plot_distance
     visualize_data = True
     N_JOBS = 1
 else:
@@ -53,21 +54,6 @@ def calc_distance_matrix(data_dir, subjects):
 
         dist_matrix_lh.to_csv(save_path_lh)
         dist_matrix_rh.to_csv(save_path_rh)
-    '''
-    # TO plot:
-    import pdb; pdb.set_trace()
-    mne_dir = mne.get_config('MNE_DATASETS_SAMPLE_PATH')
-    data_path = mne_dir + '/MNE-sample-data'
-    # subjects_dir = os.path.join(data_path, 'subjects')
-    subjects_dir = 'mne_data/MNE-sample-data/subjects/'
-    hemi = 'both'
-    brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
-                  cortex='low_contrast', background='white')
-    idx = 0
-    distance_matrix_lh_norm = distance_matrix_lh/np.max(distance_matrix_lh)
-    brain.add_label(labels_x_lh[idx], alpha=1, color='blue') #str(1 -
-    (distance_matrix_lh_norm[0, idx])))
-    '''
 
 
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
@@ -346,4 +332,5 @@ if __name__ == "__main__":
                                   model_name='lasso lars',
                                   n_samples=300)
 
-    calc_distance_matrix(data_dir, np.unique(X['subject']))
+    # calc_distance_matrix(data_dir, np.unique(X['subject']))
+    plot_distance('CC110033', data_dir, '1-lh')

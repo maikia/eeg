@@ -116,3 +116,23 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
         brain.add_label(parcel, alpha=1, color=colors['overlap'])
     import pdb
     pdb.set_trace()
+
+
+def plot_distance(subject, data_dir, parcel_name, parcels):
+    import pandas as pd
+    data_path = 'mne_data/MNE-sample-data'  # Maja
+    subjects_dir = os.path.join(data_path, 'subjects')
+
+    hemi = 'both'
+    brain = Brain(subject, hemi, 'inflated', subjects_dir=subjects_dir,
+                  cortex='low_contrast', background='white')
+
+    dist_path_lh = os.path.join(data_dir, subject + '_dist_matrix_lh.csv')
+    dist_matrix_lh = pd.read_csv(dist_path_lh, index_col=0)
+    dist_matrix_lh_norm = dist_matrix_lh.divide(dist_matrix_lh.max().max())
+
+    for parcel in parcels:
+        import pdb; pdb.set_trace()
+        # brain.add_label(labels_x_lh[idx], alpha=1, color='blue') #str(1 -
+        # (distance_matrix_lh_norm[0, idx])))
+
