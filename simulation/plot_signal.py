@@ -118,8 +118,10 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
     pdb.set_trace()
 
 
-def plot_distance(subject, data_dir, parcel_name, parcels):
+def plot_distance(subject, data_dir, parcels, parcel_name='1-lh'):
     import pandas as pd
+    print('displaying brain of subject {}, distances from label {}'.format(
+                                                    subject, parcel_name))
     data_path = 'mne_data/MNE-sample-data'  # Maja
     subjects_dir = os.path.join(data_path, 'subjects')
 
@@ -131,8 +133,18 @@ def plot_distance(subject, data_dir, parcel_name, parcels):
     dist_matrix_lh = pd.read_csv(dist_path_lh, index_col=0)
     dist_matrix_lh_norm = dist_matrix_lh.divide(dist_matrix_lh.max().max())
 
+    if 'lh' in parcel_name:
+        hemi = 'lh'
+    elif 'rh' in parcel_name:
+        hemi = 'rh'
     for parcel in parcels:
-        import pdb; pdb.set_trace()
-        # brain.add_label(labels_x_lh[idx], alpha=1, color='blue') #str(1 -
-        # (distance_matrix_lh_norm[0, idx])))
+        if parcel_name == parcel.name:
+            brain.add_label(parcel, alpha=1, color='blue')
+        elif hemi in parcel.name:
+            dist = dist_matrix_lh_norm.loc[parcel_name][parcel.name]
+            brain.add_label(parcel, alpha=1, color=str(1 - dist))
+    import pdb; pdb.set_trace()
+    cm = parcel.center_of_mass(subject, subjects_dir = subjects_dir)
+
+    brain.add_foci(cm, coords_as_verts=True, hemi='lh', color='blue')
 
