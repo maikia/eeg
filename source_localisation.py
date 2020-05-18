@@ -18,7 +18,7 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
 from simulation.lead_correlate import LeadCorrelate
-from simulation.parcels import calc_dist_matrix_for_sbj
+from simulation.parcels import calc_dist_matrix_cms
 from simulation.sparse_regressor import SparseRegressor
 import simulation.metrics as met
 
@@ -42,11 +42,12 @@ def calc_distance_matrix(data_dir, subjects):
         save_path_lh = os.path.join(data_dir, subject + '_dist_matrix_lh.csv')
         save_path_rh = os.path.join(data_dir, subject + '_dist_matrix_rh.csv')
         if os.path.exists(save_path_lh) and os.path.exists(save_path_rh):
-            continue
+            pass
+            # continue
         else:
             print('calculating distance matrix for {}'.format(subject))
 
-        dist_matrix = calc_dist_matrix_for_sbj(data_dir, subject)
+        dist_matrix = calc_dist_matrix_cms(data_dir, subject)
         dist_matrix_lh, dist_matrix_rh = dist_matrix
 
         # np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
@@ -54,6 +55,14 @@ def calc_distance_matrix(data_dir, subjects):
 
         dist_matrix_lh.to_csv(save_path_lh)
         dist_matrix_rh.to_csv(save_path_rh)
+
+
+def display_distances_on_brain(data_dir, subject='CC110033'):
+
+    calc_distance_matrix(data_dir, [subject])
+    labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                       allow_pickle=True)['arr_0']
+    plot_distance(subject, data_dir, labels_x)
 
 
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
@@ -331,6 +340,5 @@ if __name__ == "__main__":
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
                                   n_samples=300)
+    display_distances_on_brain(data_dir, subject='CC110033')
 
-    # calc_distance_matrix(data_dir, np.unique(X['subject']))
-    plot_distance('CC110033', data_dir, '1-lh')

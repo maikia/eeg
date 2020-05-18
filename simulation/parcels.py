@@ -60,17 +60,20 @@ def find_centers_of_mass(parcellation, subjects_dir):
 def calc_dist_matrix_for_sbj(data_dir, subject):
     '''
     '''
-    base_dir = 'mne_data/MNE-sample-data/subjects/' + subject
+    subjects_dir = 'mne_data/MNE-sample-data/subjects'
+    base_dir = os.path.join(subjects_dir, subject)
+
     surf_lh = nib.freesurfer.read_geometry(os.path.join(base_dir,
                                            'surf/lh.pial'))
     surf_rh = nib.freesurfer.read_geometry(os.path.join(base_dir,
                                            'surf/rh.pial'))
     labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
                        allow_pickle=True)
-
+    surf_lh[0][cms_lh[0]]
     labels_x = labels_x['arr_0']
     labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
     labels_x_rh = [s for s in labels_x if s.hemi == 'rh']
+
     distance_matrix_lh = calc_dist_matrix_labels(surf=surf_lh,
                                                  source_nodes=labels_x_lh,
                                                  dist_type="min", nv=20)
@@ -78,6 +81,92 @@ def calc_dist_matrix_for_sbj(data_dir, subject):
                                                  source_nodes=labels_x_rh,
                                                  dist_type="min", nv=20)
     return distance_matrix_lh, distance_matrix_rh
+
+
+def calc_dist_matrix_cms(data_dir, subject):
+    """
+        calculating distance matrix for closest labels is very time consuming,
+        calculating distance matrix between center of mass of each label is
+        less precise but much faster
+    """
+    subjects_dir = 'mne_data/MNE-sample-data/subjects'
+    base_dir = os.path.join(subjects_dir, subject)
+
+    surf_lh = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                           'surf/lh.pial'))
+    surf_rh = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                           'surf/rh.pial'))
+    labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+                       allow_pickle=True)
+    labels_x = labels_x['arr_0']
+    labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
+    labels_x_rh = [s for s in labels_x if s.hemi == 'rh']
+
+    cms_lh = [parcel.center_of_mass(subject, subjects_dir = subjects_dir) for
+              parcel in labels_x_lh]
+    cms_rh = [parcel.center_of_mass(subject, subjects_dir = subjects_dir) for
+              parcel in labels_x_rh]
+
+    vertices_lh, triangles_lh = surf_lh
+    vertices_rh, triangles_rh = surf_rh
+
+    vertices = np.concatenate((vertices_lh, vertices_rh))
+
+    # vertices = vertices_rh + np.max(vertices_lh)
+    max_lh = np.max(triangles_lh)
+    triangles = np.concatenate((triangles_lh,
+                               triangles_rh + max_lh + 1))
+    triangles = triangles.astype('<i4')
+
+    cms_rh = list(cms_rh + max_lh)
+    cms = np.array(cms_lh + cms_rh)
+    cms = cms.astype('<i4')
+    # import pdb; pdb.set_trace()
+    #labels_x_lh
+
+    # distance = gdist.compute_gdist(vertices, triangles,source_indices=np.array(labels_x_lh[0].vertices, ndmin=1),target_indices=np.array(labels_x_lh[0].vertices, ndmin=1))
+
+    # calculate the shortest distance between all the parcels
+    #dist_euclidian = np.empty((len(cms), len(cms)))
+    dist_euclidian = {}
+    for i in range(len(cms)):
+        for j in range(len(cms)):
+            x1, y1, z1 = vertices[cms[i]]
+            x2, y2, z2 = vertices[cms[j]]
+            e_dist = np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2- z1)**2)
+            # dist_euclidian[i][j] = np.sqrt((x2 - x1)**2 + (y2 - y1)**2 + (z2
+            # - z1)**2)
+            if i < len(labels_x_lh):
+                name_i = labels_x_lh[i].name
+            else:
+                name_i = labels_x_rh[i-len(labels_x_lh)].name
+
+            if j < len(labels_x_lh):
+                name_j = labels_x_lh[j].name
+            else:
+                name_j = labels_x_rh[j-len(labels_x_lh)].name
+            if not name_i in dist_euclidian:
+                dist_euclidian[name_i] = {}
+            # punish distance accross the hemi
+            if (i < len(labels_x_lh) and j >= len(labels_x_lh)) or (i >= len(labels_x_lh) and j < len(labels_x_lh)):
+                e_dist = np.exp(e_dist)
+            dist_euclidian[name_i][name_j] = e_dist
+
+    # calculate the shortest path for all the parcels from different hemis
+    
+    # from scipy.sparse.csgraph import dijkstra
+    # dist, path = dijkstra(dist_euclidian, return_predecessors= True) #, indices=np.array(0, 20))
+
+    # punish distances across the hemishperes
+    # left to right:
+    # dist_euclidian[0:13, 13:] = np.exp(dist_euclidian[0:13, 13:])
+    # right to left
+    # dist_euclidian[13:, 0:13] = np.exp(dist_euclidian[13:, 0:13])
+    
+    import pdb; pdb.set_trace()
+    distance = gdist.compute_gdist(vertices, triangles,source_indices=np.array(cms[20], ndmin=1),target_indices=cms)
+    import pdb; pdb.set_trace()
+    surf_lh[0][np.where(cms_lh[0] == surf_lh[1])] # find coords of the 
 
 
 def calc_dist_matrix_labels(surf, source_nodes, dist_type='min', nv=0):
@@ -142,3 +231,38 @@ def dist_calc(surf, source, target):
                                    source_indices=np.array(source, ndmin=1),
                                    target_indices=np.array(target, ndmin=1))
     return np.min(distance)
+
+# Dijkstra's algorithm for shortest paths
+# http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/117228
+
+
+import sys
+def shortestpath(graph,start,end,visited=[],distances={},predecessors={}):
+    """Find the shortest path between start and end nodes in a graph"""
+    # we've found our end node, now find the path to it, and return
+    if start==end:
+        path=[]
+        while end != None:
+            path.append(end)
+            end=predecessors.get(end,None)
+        return distances[start], path[::-1]
+    # detect if it's the first time through, set current distance to zero
+    if not visited: distances[start]=0
+    # process neighbors as per algorithm, keep track of predecessors
+    for neighbor in graph[start]:
+        if neighbor not in visited:
+            neighbordist = distances.get(neighbor,sys.maxsize)
+            tentativedist = distances[start] + graph[start][neighbor]
+            if tentativedist < neighbordist:
+                distances[neighbor] = tentativedist
+                predecessors[neighbor]=start
+    # neighbors processed, now mark the current node as visited
+    visited.append(start)
+    # finds the closest unvisited node to the start
+    unvisiteds = dict((k, distances.get(k,sys.maxsize)) for k in graph if k not in visited)
+    closestnode = min(unvisiteds, key=unvisiteds.get)
+    # now we can take the closest node and recurse, making it current
+    return shortestpath(graph,closestnode,end,visited,distances,predecessors)
+
+
+
