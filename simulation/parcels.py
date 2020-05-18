@@ -3,6 +3,7 @@ import nibabel as nib
 import numpy as np
 import os
 import pandas as pd
+import sys
 
 from mne import random_parcellation
 from mne import read_labels_from_annot
@@ -83,30 +84,38 @@ def calc_dist_matrix_for_sbj(data_dir, subject):
     return distance_matrix_lh, distance_matrix_rh
 
 
-def calc_dist_matrix_cms(data_dir, subject):
+def find_shortest_path_between_hemi(data_dir, subject):
     """
-        calculating distance matrix for closest labels is very time consuming,
-        calculating distance matrix between center of mass of each label is
-        less precise but much faster
+       1. calculates the center of mass (cms) for each parcel
+       2. calculates the euclidian distance between each cms
+       3. adds exponential punishment for each connection across the two
+          hemishperes
+       4. calculates the shortest path between each parcel from one hemisphere
+          to each parcel from the second hemisphere
+       5. returns nested dictionary of the shortest paths
     """
     subjects_dir = 'mne_data/MNE-sample-data/subjects'
     base_dir = os.path.join(subjects_dir, subject)
 
+    # load the brain anatomy for both hemispheres
     surf_lh = nib.freesurfer.read_geometry(os.path.join(base_dir,
                                            'surf/lh.pial'))
     surf_rh = nib.freesurfer.read_geometry(os.path.join(base_dir,
                                            'surf/rh.pial'))
+
+    # load parcels for both hemi
     labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
                        allow_pickle=True)
     labels_x = labels_x['arr_0']
     labels_x_lh = [s for s in labels_x if s.hemi == 'lh']
     labels_x_rh = [s for s in labels_x if s.hemi == 'rh']
 
+    # calculate center of mass
     cms_lh = [parcel.center_of_mass(subject, subjects_dir = subjects_dir) for
               parcel in labels_x_lh]
     cms_rh = [parcel.center_of_mass(subject, subjects_dir = subjects_dir) for
               parcel in labels_x_rh]
-
+    
     vertices_lh, triangles_lh = surf_lh
     vertices_rh, triangles_rh = surf_rh
 
@@ -114,9 +123,9 @@ def calc_dist_matrix_cms(data_dir, subject):
 
     # vertices = vertices_rh + np.max(vertices_lh)
     max_lh = np.max(triangles_lh)
-    triangles = np.concatenate((triangles_lh,
-                               triangles_rh + max_lh + 1))
-    triangles = triangles.astype('<i4')
+    #triangles = np.concatenate((triangles_lh,
+    #                           triangles_rh + max_lh + 1))
+    #triangles = triangles.astype('<i4')
 
     cms_rh = list(cms_rh + max_lh)
     cms = np.array(cms_lh + cms_rh)
@@ -153,20 +162,9 @@ def calc_dist_matrix_cms(data_dir, subject):
             dist_euclidian[name_i][name_j] = e_dist
 
     # calculate the shortest path for all the parcels from different hemis
-    
-    # from scipy.sparse.csgraph import dijkstra
-    # dist, path = dijkstra(dist_euclidian, return_predecessors= True) #, indices=np.array(0, 20))
-
-    # punish distances across the hemishperes
-    # left to right:
-    # dist_euclidian[0:13, 13:] = np.exp(dist_euclidian[0:13, 13:])
-    # right to left
-    # dist_euclidian[13:, 0:13] = np.exp(dist_euclidian[13:, 0:13])
-    
+    shortestpath(dist_euclidian,'3-lh','14-rh')
     import pdb; pdb.set_trace()
-    distance = gdist.compute_gdist(vertices, triangles,source_indices=np.array(cms[20], ndmin=1),target_indices=cms)
-    import pdb; pdb.set_trace()
-    surf_lh[0][np.where(cms_lh[0] == surf_lh[1])] # find coords of the 
+    # distance = gdist.compute_gdist(vertices, triangles,source_indices=np.array(cms[20], ndmin=1),target_indices=cms)
 
 
 def calc_dist_matrix_labels(surf, source_nodes, dist_type='min', nv=0):
@@ -233,10 +231,7 @@ def dist_calc(surf, source, target):
     return np.min(distance)
 
 # Dijkstra's algorithm for shortest paths
-# http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/117228
-
-
-import sys
+# adapted from http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/117228
 def shortestpath(graph,start,end,visited=[],distances={},predecessors={}):
     """Find the shortest path between start and end nodes in a graph"""
     # we've found our end node, now find the path to it, and return
@@ -259,10 +254,8 @@ def shortestpath(graph,start,end,visited=[],distances={},predecessors={}):
     # neighbors processed, now mark the current node as visited
     visited.append(start)
     # finds the closest unvisited node to the start
-    unvisiteds = dict((k, distances.get(k,sys.maxsize)) for k in graph if k not in visited)
+    unvisiteds = dict((k, distances.get(k,sys.maxsize)) for k in graph if k not
+                      in visited)
     closestnode = min(unvisiteds, key=unvisiteds.get)
     # now we can take the closest node and recurse, making it current
     return shortestpath(graph,closestnode,end,visited,distances,predecessors)
-
-
-
