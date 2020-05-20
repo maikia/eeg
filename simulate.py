@@ -297,12 +297,12 @@ def simulate_for_subject(subject, data_path, parcels_subject,
 
 if __name__ == "__main__":
     # same variables
-    n_parcels = 20  # number of parcels per hemisphere
+    n_parcels = 30  # number of parcels per hemisphere
     # (will be reduced by corpus callosum)
     random_state = 42
-    n_samples = 500
+    n_samples = 200
     hemi = 'both'
-    n_parcels_max = 3
+    n_parcels_max = 1
     signal_type = 'grad'
     make_new = False  # True if rerun all, even already existing dirs
 
@@ -318,6 +318,7 @@ if __name__ == "__main__":
                      'CC120049', 'CC120061', 'CC120120', 'CC120182',
                      'CC120264', 'CC120309', 'CC120313', 'CC120319',
                      'CC120376', 'CC120469', 'CC120550']
+    subject_names = [subject_names[0]]
 
     data_dir = 'data'
     for subject in subject_names:
