@@ -279,7 +279,7 @@ if __name__ == "__main__":
     calc_scores_for_lc = False
     calc_learning_rate = True
 
-    username = os.environ["USERNAME"]
+    username = os.environ.get('USER')
     # data_dir = 'data/data_grad_all_26_3'
     if "mtelen" in username:
         data_dir = 'data/data_grad_sample_42_1'
