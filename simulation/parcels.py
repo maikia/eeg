@@ -230,6 +230,7 @@ def dist_calc(surf, source, target):
                                    target_indices=np.array(target, ndmin=1))
     return np.min(distance)
 
+
 # Dijkstra's algorithm for shortest paths
 # adapted from http://aspn.activestate.com/ASPN/Cookbook/Python/Recipe/117228
 def shortestpath(graph,start,end,visited=[],distances={},predecessors={}):

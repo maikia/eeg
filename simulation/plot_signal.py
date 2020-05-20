@@ -3,6 +3,7 @@ import matplotlib.pylab as plt
 import mne
 import numpy as np
 import os
+import pandas as pd
 
 
 def plot_evoked(raw, events, fig_dir='figs', ext='.png'):
@@ -119,7 +120,6 @@ def plot_y_pred_true_parcels(subject_name, labels_pred, labels_true,
 
 
 def plot_distance(subject, data_dir, parcels, parcel_name='1-lh'):
-    import pandas as pd
     print('displaying brain of subject {}, distances from label {}'.format(
                                                     subject, parcel_name))
     data_path = 'mne_data/MNE-sample-data'  # Maja

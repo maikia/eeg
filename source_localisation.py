@@ -18,7 +18,7 @@ from sklearn.metrics import make_scorer
 from sklearn.model_selection import cross_validate, train_test_split
 
 from simulation.lead_correlate import LeadCorrelate
-from simulation.parcels import calc_dist_matrix_cms
+from simulation.parcels import find_shortest_path_between_hemi
 from simulation.sparse_regressor import SparseRegressor
 import simulation.metrics as met
 
@@ -47,7 +47,7 @@ def calc_distance_matrix(data_dir, subjects):
         else:
             print('calculating distance matrix for {}'.format(subject))
 
-        dist_matrix = calc_dist_matrix_cms(data_dir, subject)
+        dist_matrix = find_shortest_path_between_hemi(data_dir, subject)
         dist_matrix_lh, dist_matrix_rh = dist_matrix
 
         # np.savez(save_path, dist_matrix_lh=distance_matrix_lh,
@@ -92,8 +92,13 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
         subject_id = x['subject_id']
 
         if len(labels[subject_id]) == 0:
-            labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-                               allow_pickle=True)
+            try:
+                labels_x = np.load(os.path.join(data_dir,
+                                                subject + '_labels.npz'),
+                                   allow_pickle=True)
+            except:
+                labels_x = np.load(os.path.join(data_dir, 'labels.npz'),
+                                   allow_pickle=True)
             labels_x = labels_x['arr_0']
             labels[subject_id] = labels_x
 
@@ -117,7 +122,7 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     if n_samples_grid == 'auto':
         n_samples_grid = np.logspace(1, np.log10(len(X_train)),
                                      num=10, base=10, dtype='int')
-
+    print(n_samples_grid)
     scores_all = pd.DataFrame(columns=['n_samples_train', 'score_test'])
 
     for n_samples_train in n_samples_grid:
@@ -177,7 +182,7 @@ def load_data(data_dir):
         X['subject_id'] = X['subject'].map(subj_dict)
     else:
         X['subject'] = subject_name
-        X['subject id'] = idx
+        X['subject_id'] = idx
 
     X.astype({'subject_id': 'int32'}).dtypes
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
@@ -230,7 +235,7 @@ def calc_scores_for_model(X, y, model, n_samples=-1):
     return scores
 
 
-def make_learning_curve_for_all(X, y, models):
+def make_learning_curve_for_all(X, y, models, n_samples_grid):
     # Do learning curve for all models and all datasets
     scores_all = []
 
@@ -251,7 +256,6 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
     for cond, df in scores_all.groupby(['n_parcels', 'max_sources',
                                         'model_name', 'model']):
         sub = np.where(diff_parcels == cond[0])[0][0]
-
         if type(ax) == np.ndarray:
             ax[sub].plot(df.n_samples_train, df.score_test,
                          label=str(cond[1]) + cond[2])
@@ -271,15 +275,16 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = False
+    plot_data = True
     calc_scores_for_lc = False
-    calc_learning_rate = False
+    calc_learning_rate = True
 
-    data_dir = 'data/data_grad_all_26_3'
+    # data_dir = 'data/data_grad_all_26_3'
+    data_dir = 'data/data_grad_sample_42_1'
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
-    n_samples_grid = [300]
+    n_samples_grid = [200]
     subject = data_dir.split('_')[-3]
 
     # load data
@@ -313,14 +318,14 @@ if __name__ == "__main__":
             # n_samples = 10
         else:
             n_samples = -1
-        calc_scores_for_model(X, y, model=lc, n_samples=n_samples)
+        calc_scores_for_model(X, y, model=lc, n_samples=n_samples_grid)
 
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
         models = {'lead correlate': lc, 'lasso lars': lasso_lars,
                   'K-neighbours(3)': kneighbours}
-        scores_all = make_learning_curve_for_all(X, y, models)
+        scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
         scores_all.to_pickle(scores_save_file)
 
         print(scores_all.tail(len(models)))
@@ -340,5 +345,5 @@ if __name__ == "__main__":
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
                                   n_samples=300)
-    display_distances_on_brain(data_dir, subject='CC110033')
-
+    if False:
+        display_distances_on_brain(data_dir, subject='CC110033')
