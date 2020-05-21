@@ -275,7 +275,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     calc_scores_for_lc = False
     calc_learning_rate = True
 
