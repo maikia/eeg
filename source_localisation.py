@@ -9,8 +9,6 @@ from scipy import sparse
 from sklearn import linear_model
 from sklearn.multioutput import MultiOutputClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 
 from sklearn.metrics import hamming_loss
 from sklearn.metrics import jaccard_score
@@ -300,11 +298,8 @@ if __name__ == "__main__":
     #        linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
     #                                 normalize=False, fit_intercept=False)
     #    )
-    model = make_pipeline(
-          # StandardScaler(with_mean=False),
-            linear_model.LassoLars(max_iter=3, # n_jobs=N_JOBS,
-                                     normalize=False, fit_intercept=False)
-        )
+    model = linear_model.LassoLars(max_iter=3, normalize=False,
+                                   fit_intercept=False)
 
     lasso_lars = SparseRegressor(L, parcel_indices, model)
     # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
@@ -328,8 +323,9 @@ if __name__ == "__main__":
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
-        models = {'lasso lars': lasso_lars} #{'lead correlate': lc, 'lasso lars': lasso_lars,
-                  # 'K-neighbours(3)': kneighbours}
+        models = {'lasso lars': lasso_lars}
+        # models = {'lead correlate': lc, 'lasso lars': lasso_lars,
+        #           'K-neighbours(3)': kneighbours}
         scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
         scores_all.to_pickle(scores_save_file)
 
