@@ -303,7 +303,7 @@ if __name__ == "__main__":
     # Lasso lars
     model = make_pipeline(
             StandardScaler(with_mean=False),
-            linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
+            linear_model.LassoLarsCV(max_iter=3000, n_jobs=N_JOBS,
                                      normalize=False, fit_intercept=False)
         )
 
