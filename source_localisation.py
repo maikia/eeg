@@ -275,7 +275,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     calc_scores_for_lc = False
     calc_learning_rate = True
 
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
-    n_samples_grid = [200]
+    n_samples_grid = [150]
     subject = data_dir.split('_')[-3]
 
     # load data
@@ -295,9 +295,14 @@ if __name__ == "__main__":
 
     # define models
     # Lasso lars
+    # model = make_pipeline(
+    #       StandardScaler(with_mean=False),
+    #        linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
+    #                                 normalize=False, fit_intercept=False)
+    #    )
     model = make_pipeline(
-            StandardScaler(with_mean=False),
-            linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
+          # StandardScaler(with_mean=False),
+            linear_model.LassoLars(max_iter=3, # n_jobs=N_JOBS,
                                      normalize=False, fit_intercept=False)
         )
 
@@ -323,8 +328,8 @@ if __name__ == "__main__":
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
-        models = {'lead correlate': lc, 'lasso lars': lasso_lars,
-                  'K-neighbours(3)': kneighbours}
+        models = {'lasso lars': lasso_lars} #{'lead correlate': lc, 'lasso lars': lasso_lars,
+                  # 'K-neighbours(3)': kneighbours}
         scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
         scores_all.to_pickle(scores_save_file)
 
@@ -344,6 +349,6 @@ if __name__ == "__main__":
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
-                                  n_samples=300)
+                                  n_samples=n_samples)
     if False:
         display_distances_on_brain(data_dir, subject='CC110033')
