@@ -48,13 +48,33 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                           overwrite=True)
 
 
-def find_centers_of_mass(parcellation, subjects_dir):
-    centers = np.zeros([len(parcellation)])
+def find_centers_of_mass(parcellation, subjects_dir, return_positions=False):
+    centers = np.zeros(len(parcellation))
+    positions = np.zeros((len(parcellation), 3))
+
+    # load the brain anatomy for both hemispheres
+    if return_positions:
+        subject = parcellation[0].subject
+        base_dir = os.path.join(subjects_dir, subject)
+        pos_lh, _ = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                                 'surf/lh.pial'))
+        pos_rh, _ = nib.freesurfer.read_geometry(os.path.join(base_dir,
+                                                 'surf/rh.pial'))
     # calculate center of mass for the labels
     for idx, parcel in enumerate(parcellation):
         centers[idx] = parcel.center_of_mass(restrict_vertices=True,
                                              surf='white',
                                              subjects_dir=subjects_dir)
+        if return_positions:
+            if parcel.hemi == "lh":
+                pos = pos_lh
+            else:
+                pos = pos_rh
+            distances = ((pos - pos[centers[idx]][None, :]) ** 2).sum(1)
+            nearest_vertex = np.argmin(distances)
+            positions[idx] = pos[nearest_vertex]
+    if return_positions:
+        return positions
     return centers.astype('int')
 
 
@@ -115,7 +135,7 @@ def find_shortest_path_between_hemi(data_dir, subject):
               parcel in labels_x_lh]
     cms_rh = [parcel.center_of_mass(subject, subjects_dir = subjects_dir) for
               parcel in labels_x_rh]
-    
+
     vertices_lh, triangles_lh = surf_lh
     vertices_rh, triangles_rh = surf_rh
 
