@@ -33,11 +33,19 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             l_used = self.lead_field[subj_idx]
 
             X_used = X[X['subject_id'] == subj_idx]
-            X_used = X_used.iloc[:,:-2]
-            model.fit(l_used, X_used.T)
+            X_used = X_used.iloc[:, :-2]
+
+            norms = l_used.std(axis=0)
+            l_used = l_used / norms[None, :]
+
+            alpha_max = abs(l_used.T.dot(X_used.T)).max() / len(l_used)
+            alpha = 0.3 * alpha_max
+            model.estimator.alpha = alpha
+            model.fit(l_used, X_used.T)  # cross validation done here
 
             for idx, idx_used in enumerate(X_used.index.values):
                 est_coef = np.abs(_get_coef(model.estimators_[idx]))
+                est_coef /= norms
                 beta = pd.DataFrame(
                         np.abs(est_coef)
                         ).groupby(
