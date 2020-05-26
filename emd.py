@@ -2,14 +2,14 @@ import os.path as op
 import warnings
 
 import numpy as np
-import jit
+from numba import jit
 from joblib import Memory
 
 from ot import emd2
 
 import mne
 
-from mne.datasets import testing
+from mne.datasets import sample
 
 import config
 from simulation.parcels import find_centers_of_mass
@@ -25,6 +25,7 @@ def _mesh_all_distances(points, tris, verts=None):
     A = A.toarray()
     A[A == 0.] = 1e6
     A.flat[::len(A) + 1] = 0.
+    print("Running floyd-warshall")
     A = _floyd_warshall(A)
     return A
 
@@ -53,7 +54,7 @@ def _floyd_warshall(dist):
 
 def _get_src_space(subject, subjects_dir):
     if subject == "fsaverage":
-        data_path = testing.data_path()
+        data_path = sample.data_path()
         subjects_dir = op.join(data_path, 'subjects')
         src = mne.setup_source_space(subject="fsaverage",
                                      spacing="ico4",
@@ -66,8 +67,12 @@ def _get_src_space(subject, subjects_dir):
 
 
 @mem.cache
-def _compute_full_ground_metric(subject, hemi_indices, subjects_dir):
+def _compute_full_ground_metric(subject, hemi, subjects_dir):
     """Compute geodesic distance matrix on the triangulated mesh of src."""
+    if hemi == "both":
+        hemi_indices = [0, 1]
+    else:
+        hemi_indices = [hemi == "rh"]
     src = _get_src_space(subject, subjects_dir)
     Ds = []
     for i in hemi_indices:
@@ -109,28 +114,34 @@ def emd_score(y_true, y_score, parcels, subjects_dir):
         return float("inf")
     subject = parcels[0].subject
     hemis = [p.hemi for p in parcels]
-    hemi_indices = [["lh", "rh"].index(h) for h in np.unique(hemis)]
+    if len(np.unique(hemis)) == 2:
+        hemi = "both"
+    else:
+        hemi = hemis[0]
     # compute a ground metric on a ico4 src space
-    ground_metric = _compute_full_ground_metric(subject, hemi=hemi_indices,
+    ground_metric = _compute_full_ground_metric(subject, hemi=hemi,
                                                 subjects_dir=subjects_dir)
 
     # get nearest vertices to the parcel centers in the src space
     src = _get_src_space(subject, subjects_dir)
-    src_coords = np.concatenate((src[0]["rr"], src[1]["rr"]))
+    inuse_lh = src[0]["inuse"].astype(bool)
+    inuse_rh = src[1]["inuse"].astype(bool),
+
+    src_coords = np.concatenate((src[0]["rr"][inuse_lh],
+                                 src[1]["rr"][inuse_rh]))
+    src_coords = src_coords * 1000
     parcel_positions = find_centers_of_mass(parcels, subjects_dir,
                                             return_positions=True)
     distances = ((src_coords[:, None, :] -
                   parcel_positions[None, :, :]) ** 2).sum(axis=-1)
-    nearest_vertices = np.argmin(distances, axis=1)
-
-    # shift the vertices in the right hemi by n_sources_lh
-    n_sources_lh = src[0]["nuse"]
-    shift = (np.array(hemis) == "rh").astype(int) * n_sources_lh
-    nearest_vertices += shift
+    nearest_vertices = np.argmin(distances, axis=0)
 
     # keep only the vertices of the parcel in the ground metric
     ground_metric = ground_metric[nearest_vertices, :][:, nearest_vertices]
+    ground_metric = np.ascontiguousarray(ground_metric)
 
+    # change unit to cm
+    ground_metric = ground_metric * 100
     # compute emd
     y_true = y_true / y_true.sum()
     y_score = y_score / y_score.sum()

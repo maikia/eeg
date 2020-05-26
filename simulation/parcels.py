@@ -62,15 +62,16 @@ def find_centers_of_mass(parcellation, subjects_dir, return_positions=False):
                                                  'surf/rh.pial'))
     # calculate center of mass for the labels
     for idx, parcel in enumerate(parcellation):
-        centers[idx] = parcel.center_of_mass(restrict_vertices=True,
-                                             surf='white',
-                                             subjects_dir=subjects_dir)
+        vertex = parcel.center_of_mass(restrict_vertices=True,
+                                       surf='white',
+                                       subjects_dir=subjects_dir).astype(int)
+        centers[idx] = vertex
         if return_positions:
             if parcel.hemi == "lh":
                 pos = pos_lh
             else:
                 pos = pos_rh
-            distances = ((pos - pos[centers[idx]][None, :]) ** 2).sum(1)
+            distances = ((pos - pos[vertex][None, :]) ** 2).sum(1)
             nearest_vertex = np.argmin(distances)
             positions[idx] = pos[nearest_vertex]
     if return_positions:
