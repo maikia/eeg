@@ -41,6 +41,11 @@ def plot_sources_at_activation(X, y, signal_type, fig_dir='figs', ext='.png'):
     if not os.path.isdir(fig_dir):
         os.mkdir(fig_dir)
 
+    username = os.environ.get('USER')
+    if "hjana" in username:
+        data_path = "/storage/store/data/mne_data/MNE-sample-data"
+    else:
+        data_path = mne.datasets.sample.data_path()
     data_path = mne.datasets.sample.data_path()
 
     fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
@@ -147,4 +152,3 @@ def plot_distance(subject, data_dir, parcels, parcel_name='1-lh'):
     cm = parcel.center_of_mass(subject, subjects_dir = subjects_dir)
 
     brain.add_foci(cm, coords_as_verts=True, hemi='lh', color='blue')
-

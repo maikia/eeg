@@ -277,8 +277,14 @@ if __name__ == "__main__":
     calc_scores_for_lc = False
     calc_learning_rate = True
 
+    username = os.environ.get('USER')
     # data_dir = 'data/data_grad_all_26_3'
-    data_dir = 'data/data_grad_sample_42_1'
+    if "mtelen" in username:
+        data_dir = 'data/data_grad_sample_42_1'
+    elif "hjana" in username:
+        data_dir = "/storage/store/work/hjanati/datasets/data_grad_sample_42_1"
+    else:
+        pass
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
@@ -300,6 +306,7 @@ if __name__ == "__main__":
     #    )
     model = linear_model.LassoLars(max_iter=3, normalize=False,
                                    fit_intercept=False)
+
 
     lasso_lars = SparseRegressor(L, parcel_indices, model)
     # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())

@@ -305,14 +305,17 @@ if __name__ == "__main__":
     n_parcels_max = 1
     signal_type = 'grad'
     make_new = False  # True if rerun all, even already existing dirs
-
-    data_path = mne.datasets.sample.data_path()
+    username = os.environ.get('USER')
+    if "hjana" in username:
+        data_path = "/storage/store/data/mne_data/MNE-sample-data"
+    else:
+        data_path = mne.datasets.sample.data_path()
     sample_subjects_dir = os.path.join(data_path, 'subjects')
     camcan_subjects_dir = '/storage/store/data/camcan-mne/freesurfer'
     parcels_fsaverage = make_parcels_on_fsaverage(sample_subjects_dir,
                                                   n_parcels=n_parcels,
                                                   random_state=random_state)
-
+    0 / 0
     subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101',
                      'CC110187', 'CC110411', 'CC110606', 'CC112141',
                      'CC120049', 'CC120061', 'CC120120', 'CC120182',
