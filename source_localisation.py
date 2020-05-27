@@ -279,7 +279,7 @@ if __name__ == "__main__":
 
     username = os.environ.get('USER')
     # data_dir = 'data/data_grad_all_26_3'
-    if "mtelen" in username:
+    if "mtelen" in username or 'maja' in username:
         data_dir = 'data/data_grad_sample_42_1'
     elif "hjana" in username:
         data_dir = "/storage/store/work/hjanati/datasets/data_grad_sample_42_1"
@@ -299,17 +299,11 @@ if __name__ == "__main__":
 
     # define models
     # Lasso lars
-    # model = make_pipeline(
-    #       StandardScaler(with_mean=False),
-    #        linear_model.LassoLarsCV(max_iter=3, n_jobs=N_JOBS,
-    #                                 normalize=False, fit_intercept=False)
-    #    )
     model = linear_model.LassoLars(max_iter=3, normalize=False,
                                    fit_intercept=False)
 
 
     lasso_lars = SparseRegressor(L, parcel_indices, model)
-    # lasso = SparseRegressor(L, parcel_indices, linear_model.LassoCV())
 
     # Lead COrrelate
     lc = LeadCorrelate(L, parcel_indices)

@@ -315,7 +315,7 @@ if __name__ == "__main__":
     parcels_fsaverage = make_parcels_on_fsaverage(sample_subjects_dir,
                                                   n_parcels=n_parcels,
                                                   random_state=random_state)
-    0 / 0
+
     subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101',
                      'CC110187', 'CC110411', 'CC110606', 'CC112141',
                      'CC120049', 'CC120061', 'CC120120', 'CC120182',
