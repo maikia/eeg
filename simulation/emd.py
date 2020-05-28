@@ -79,6 +79,10 @@ def _compute_full_ground_metric(subject, hemi, subjects_dir):
         tris = src[i]["use_tris"]
         vertno = src[i]["vertno"]
         points = src[i]["rr"][vertno]
+        if np.max(tris) > len(np.unique(tris)):
+            tris = tris.copy()
+            for ii, v in enumerate(vertno):
+                tris[tris == v] = ii
 
         D = _mesh_all_distances(points, tris)
         Ds.append(D)
