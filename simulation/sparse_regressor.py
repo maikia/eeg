@@ -4,6 +4,8 @@ import pandas as pd
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.multioutput import MultiOutputRegressor
 
+from simulation.emd import emd_score
+
 
 def _get_coef(est):
     if hasattr(est, 'steps'):
@@ -20,6 +22,24 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
     def fit(self, X, y):
         return self
+
+    def score(self, X, y):
+        # overwites given score with the EMD score
+        # TODO: clean it up once it works
+        import os
+        import mne
+        y_pred = self.predict(X)
+        data_dir = 'data/data_grad_sample_42_1'
+        # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+        #        allow_pickle=True)['arr_0']
+        labels_x = np.load(os.path.join(data_dir, 'labels.npz'),
+                   allow_pickle=True)['arr_0']
+        data_path = mne.datasets.sample.data_path()
+        sample_subjects_dir = os.path.join(data_path, 'subjects')
+
+        emd_score(y.T, y_pred.T, labels_x, sample_subjects_dir)
+        import pdb; pdb.set_trace()
+        # for subj_idx in np.unique(X['subject_id'])
 
     def predict(self, X):
         return (self.decision_function(X) > 0).astype(int)
