@@ -53,10 +53,10 @@ def _floyd_warshall(dist):
 
 
 def _get_src_space(subject, subjects_dir):
-    if subject == "fsaverage":
+    if subject == "fsaverage" or subject == "sample":
         data_path = sample.data_path()
         subjects_dir = op.join(data_path, 'subjects')
-        src = mne.setup_source_space(subject="fsaverage",
+        src = mne.setup_source_space(subject=subject,
                                      spacing="ico4",
                                      subjects_dir=subjects_dir,
                                      add_dist=False)
