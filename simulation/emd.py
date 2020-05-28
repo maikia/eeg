@@ -112,7 +112,8 @@ def emd_score(y_true, y_score, parcels, subjects_dir):
     --------
     float, emd value
     """
-    assert len(y_true) == len(parcels)
+    n_simu, n_classes = y_true.shape
+    assert n_classes == len(parcels)
     if y_score.any() is False:
         warnings.warn("Cannot compute EMD with a null y_score. Returned inf")
         return float("inf")
@@ -147,8 +148,11 @@ def emd_score(y_true, y_score, parcels, subjects_dir):
     # change unit to cm
     ground_metric = ground_metric * 100
     # compute emd
-    y_true = y_true / y_true.sum()
-    y_score = y_score / y_score.sum()
-    score = emd2(y_true, y_score, ground_metric)
+    score = 0.
+    for yt, ys in zip(y_true, y_score):
+        yt = yt / yt.sum()
+        ys = ys / ys.sum()
+        score += emd2(yt, ys, ground_metric)
+    score /= n_simu
 
     return score

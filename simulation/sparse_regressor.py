@@ -29,16 +29,25 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         import os
         import mne
         y_pred = self.predict(X)
-        data_dir = 'data/data_grad_sample_42_1'
+
+        username = os.environ.get('USER')
+        # data_dir = 'data/data_grad_all_26_3'
+        if "mtelen" in username or 'maja' in username:
+            data_dir = 'data/data_grad_sample_42_1'
+        elif "hjana" in username:
+            data_dir = "/storage/store/work/hjanati/datasets/"
+            data_dir += "data_grad_sample_42_1"
+        else:
+            pass
         # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
         #        allow_pickle=True)['arr_0']
         labels_x = np.load(os.path.join(data_dir, 'labels.npz'),
-                   allow_pickle=True)['arr_0']
+                           allow_pickle=True)['arr_0']
         data_path = mne.datasets.sample.data_path()
         sample_subjects_dir = os.path.join(data_path, 'subjects')
 
-        emd_score(y.T, y_pred.T, labels_x, sample_subjects_dir)
-        import pdb; pdb.set_trace()
+        score = emd_score(y, y_pred, labels_x, sample_subjects_dir)
+        return score
         # for subj_idx in np.unique(X['subject_id'])
 
     def predict(self, X):
@@ -59,7 +68,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             l_used = l_used / norms[None, :]
 
             alpha_max = abs(l_used.T.dot(X_used.T)).max() / len(l_used)
-            alpha = 0.3 * alpha_max
+            alpha = 0.2 * alpha_max
             model.estimator.alpha = alpha
             model.fit(l_used, X_used.T)  # cross validation done here
 
