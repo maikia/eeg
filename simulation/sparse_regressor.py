@@ -1,4 +1,5 @@
 import numpy as np
+import os
 import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
@@ -26,20 +27,14 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
     def score(self, X, y):
         # overwites given score with the EMD score
-        # TODO: clean it up once it works
-        import os
-        import mne
+
         y_pred = self.predict(X)
         subjects = np.unique(X['subject'])
         scores = np.empty(len(subjects))
         for idx, subject in enumerate(subjects):
-            # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-            #        allow_pickle=True)['arr_0']
-            labels_x = np.load(os.path.join(self.data_dir, 'labels.npz'),
-                            allow_pickle=True)['arr_0']
-
-            # data_path = mne.datasets.sample.data_path()
-            # sample_subjects_dir = os.path.join(data_path, 'subjects')
+            labels_x = np.load(os.path.join(self.data_dir,
+                                            subject + '_labels.npz'),
+                               allow_pickle=True)['arr_0']
 
             scores[idx] = emd_score(y, y_pred, labels_x)
         import pdb; pdb.set_trace()

@@ -209,7 +209,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     # outfile.close()
 
     # save the labels for the subject
-    np.savez(os.path.join(data_dir_specific, 'labels.npz'),
+    np.savez(os.path.join(data_dir_specific, subject + '_labels.npz'),
              parcels_subject)
 
     # SIMULATE DATA

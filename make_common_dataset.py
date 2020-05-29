@@ -34,7 +34,10 @@ sbj_id = 0
 all_X_file = os.path.join(data_dir_all, 'X.csv')
 for idx, subject_path in enumerate(data_dirs):
     # check if all the necessary files are present
-    labels_exist = os.path.exists(os.path.join(subject_path, 'labels.npz'))
+    subject_info = subject_path.split('_')
+    subject_name = subject_info[2]
+    labels_exist = os.path.exists(os.path.join(subject_path,
+                                  subject_name + '_labels.npz'))
     target_exists = os.path.exists(os.path.join(subject_path, 'target.npz'))
     X_exists = os.path.exists(os.path.join(subject_path, 'X.csv'))
     lf_exists = os.path.exists(os.path.join(subject_path, 'lead_field.npz'))
@@ -44,8 +47,6 @@ for idx, subject_path in enumerate(data_dirs):
               subject_path))
         continue
 
-    subject_info = subject_path.split('_')
-    subject_name = subject_info[2]
     print('adding subject ' + subject_name)
     subject_data = pd.read_csv(os.path.join(subject_path, 'X.csv'))
     subject_data['subject'] = subject_name
@@ -66,7 +67,7 @@ for idx, subject_path in enumerate(data_dirs):
                     os.path.join(data_dir_all,
                                  subject_name + '_lead_field.npz')
                     )
-    shutil.copyfile(os.path.join(subject_path, 'labels.npz'),
+    shutil.copyfile(os.path.join(subject_path, subject_name + '_labels.npz'),
                     os.path.join(data_dir_all,
                                  subject_name + '_labels.npz')
                     )

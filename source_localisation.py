@@ -90,13 +90,10 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
         subject_id = x['subject_id']
 
         if len(labels[subject_id]) == 0:
-            try:
-                labels_x = np.load(os.path.join(data_dir,
-                                                subject + '_labels.npz'),
-                                   allow_pickle=True)
-            except:
-                labels_x = np.load(os.path.join(data_dir, 'labels.npz'),
-                                   allow_pickle=True)
+            labels_x = np.load(os.path.join(data_dir,
+                                            subject + '_labels.npz'),
+                               allow_pickle=True)
+
             labels_x = labels_x['arr_0']
             labels[subject_id] = labels_x
 
