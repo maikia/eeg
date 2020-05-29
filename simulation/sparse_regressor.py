@@ -74,16 +74,17 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             l_used = np.array([[[3, 1], [2, 0], [1, 0]],\
                      [[0, 2], [-1, 3], [1, -2]]], dtype=float)
             coef = np.array([[1., 1.], [0., -1]])
-            X_used = np.array([x.dot(c) for x, c in zip(l_used, coef.T)])
-            X_used += 0.1
+            # X_used = np.array([x.dot(c) for x, c in zip(l_used, coef.T)])
+            # X_used += 0.1
+            X_used = np.array([[[0, 0], [1, 1], [1, 0]],[[1, 0], [0, 0], [1, 1]]])
             self.alpha = np.asarray([0.1, 0.2])
 
             # X_used = X_used[np.newaxis, :]
             max_iter_reweighting = 100
-            n_tasks = len(l_used)
+            n_subjects = len(l_used)
             n_samples, n_features = l_used[0].shape
 
-            self.coef_ = np.zeros((n_features, n_tasks))
+            self.coef_ = np.zeros((n_features, n_subjects))
             weights = np.ones_like(self.coef_)
             coef_old = self.coef_.copy()
             self.loss_ = []
@@ -92,40 +93,41 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             # l_used = l_used / norms[None, :]
             for i in range(max_iter_reweighting):
                 lw = l_used * weights.T[:, None, :]
-                theta = np.zeros((n_features, n_tasks))
+                theta = np.zeros((n_features, n_subjects))
 
                 # solver lasso
-                for k in range(n_tasks):
+                for k in range(n_subjects):
                     alpha_lasso = self.alpha.copy()
-                    alpha_lasso = np.asarray(alpha_lasso).reshape(n_tasks)
-                    from sklearn.linear_model import Lasso
-                    lasso = Lasso(alpha=alpha_lasso[k], tol=1e-4, max_iter=2000,
-                                  fit_intercept=False, positive=False)
+                    alpha_lasso = np.asarray(alpha_lasso).reshape(n_subjects)
+                    #from sklearn.linear_model import Lasso
+                    # lasso = Lasso(alpha=alpha_lasso[k], tol=1e-4, max_iter=2000,
+                    #               fit_intercept=False, positive=False)
+                    model.estimator.alpha = alpha_lasso[k]
+                    model.fit(lw[k], X_used[k])
                     # model.estimator.alpha = alpha_lasso
-                    lasso.fit(lw[k], X_used[k])
 
-                    theta[:, k] = lasso.coef_
+                    theta[:, k] = np.abs(_get_coef(model.estimators_[k]))
                 coef_ = theta * weights
                 err = abs(coef_ - coef_old).max()
                 err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
                 coef_old = coef_.copy()
                 weights = 2 * (abs(coef_) ** 0.5 + 1e-10)
-                obj = 0.5 * (self.residual(lw, coef_, X_used) ** 2).sum() / n_samples
-                obj += (self.alpha[None, :] * abs(coef_) ** 0.5).sum()
-                self.loss_.append(obj)
+                # import pdb; pdb.set_trace()
+                # obj = 0.5 * (self.residual(lw, coef_, X_used) ** 2).sum() / n_samples
+                # obj += (self.alpha[None, :] * abs(coef_) ** 0.5).sum()
+                # self.loss_.append(obj)
 
                 if err < self.tol and i:
                     break
 
-            import pdb; pdb.set_trace()
-
-            if i == self.max_iter_reweighting - 1 and i:
+            if i == max_iter_reweighting - 1 and i:
                 warnings.warn('Reweighted objective did not converge.' +
                               ' You might want to increase ' +
                           'the number of iterations of reweighting.' +
                           ' Fitting data with very small alpha' +
                           ' may cause precision problems.',
                           ConvergenceWarning)
+            import pdb; pdb.set_trace()
 
             '''
             norms = l_used.std(axis=0)
