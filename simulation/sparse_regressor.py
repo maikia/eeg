@@ -26,8 +26,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         return self
 
     def score(self, X, y):
-        # overwites given score with the EMD score
-
+        # overwites given score with the EMD score (based on the distance)
         y_pred = self.predict(X)
         subjects = np.unique(X['subject'])
         scores = np.empty(len(subjects))
@@ -42,7 +41,6 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             scores[idx] = emd_score(y_subj, y_pred, labels_x)
             scores[idx] /= len(len(y_subj))
         score = np.mean(scores) * len(y)
-        import pdb; pdb.set_trace()
         return score
 
     def predict(self, X):

@@ -22,7 +22,7 @@ def get_subjects_dir(dataset_name="camcan"):
 
 def get_subjects_dir_subj(subject="sample"):
     if 'CC' in subject:
-        dataset_name == "camcan"
+        dataset_name = "camcan"
     else:
         dataset_name = subject
     return get_subjects_dir(dataset_name)

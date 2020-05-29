@@ -299,7 +299,6 @@ if __name__ == "__main__":
     model = linear_model.LassoLars(max_iter=3, normalize=False,
                                    fit_intercept=False)
 
-
     lasso_lars = SparseRegressor(L, parcel_indices, model, data_dir)
 
     # Lead COrrelate
