@@ -30,15 +30,18 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         import os
         import mne
         y_pred = self.predict(X)
+        subjects = np.unique(X['subject'])
+        scores = np.empty(len(subjects))
+        for idx, subject in enumerate(subjects):
+            # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
+            #        allow_pickle=True)['arr_0']
+            labels_x = np.load(os.path.join(self.data_dir, 'labels.npz'),
+                            allow_pickle=True)['arr_0']
 
-        # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
-        #        allow_pickle=True)['arr_0']
-        labels_x = np.load(os.path.join(self.data_dir, 'labels.npz'),
-                           allow_pickle=True)['arr_0']
-        data_path = mne.datasets.sample.data_path()
-        sample_subjects_dir = os.path.join(data_path, 'subjects')
-
-        score = emd_score(y, y_pred, labels_x, sample_subjects_dir)
+            data_path = mne.datasets.sample.data_path()
+            sample_subjects_dir = os.path.join(data_path, 'subjects')
+            import pdb; pdb.set_trace()
+            scores[idx] = emd_score(y, y_pred, labels_x, sample_subjects_dir)
         return score
         # for subj_idx in np.unique(X['subject_id'])
 
