@@ -1,3 +1,4 @@
+import mne
 import os
 import pandas as pd
 
@@ -11,9 +12,20 @@ def get_subjects_dir(dataset_name="camcan"):
     elif dataset_name == "ds117":
         subjects_dir = "/storage/store/work/agramfort/mne-biomag-group-demo/"
         subjects_dir += "subjects/"
+    elif dataset_name == "sample":
+        data_path = mne.datasets.sample.data_path()
+        subjects_dir = os.path.join(data_path, 'subjects')
     else:
         raise ValueError("Unknown dataset %s." % dataset_name)
     return subjects_dir
+
+
+def get_subjects_dir_subj(subject="sample"):
+    if 'CC' in subject:
+        dataset_name == "camcan"
+    else:
+        dataset_name = subject
+    return get_subjects_dir(dataset_name)
 
 
 def get_trans_fname(subject, dataset_name="camcan"):

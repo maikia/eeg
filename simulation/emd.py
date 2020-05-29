@@ -97,7 +97,7 @@ def _compute_full_ground_metric(subject, hemi, subjects_dir):
     return D
 
 
-def emd_score(y_true, y_score, parcels, subjects_dir):
+def emd_score(y_true, y_score, parcels):
     """Compute Earth-Mover-Distance.
 
     parameters:
@@ -106,7 +106,7 @@ def emd_score(y_true, y_score, parcels, subjects_dir):
     y_true: binary array (n_classes,)
     y_score: array (n_classes,)
     parcels: parcellation list
-    subjects_dir: str
+    subject: str
 
     Returns:
     --------
@@ -117,12 +117,17 @@ def emd_score(y_true, y_score, parcels, subjects_dir):
     if y_score.any() is False:
         warnings.warn("Cannot compute EMD with a null y_score. Returned inf")
         return float("inf")
+
     subject = parcels[0].subject
     hemis = [p.hemi for p in parcels]
     if len(np.unique(hemis)) == 2:
         hemi = "both"
     else:
         hemi = hemis[0]
+
+    # read the subjects dir
+    subjects_dir = config.get_subjects_dir_subj(subject)
+
     # compute a ground metric on a ico4 src space
     ground_metric = _compute_full_ground_metric(subject, hemi=hemi,
                                                 subjects_dir=subjects_dir)
