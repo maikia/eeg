@@ -34,6 +34,7 @@ def get_data_path():
         data_path = "/storage/store/data/mne_data/MNE-sample-data"
     else:
         data_path = mne.datasets.sample.data_path()
+    return data_path
 
 
 def get_trans_fname(subject, dataset_name="camcan"):

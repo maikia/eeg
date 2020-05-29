@@ -113,6 +113,7 @@ def emd_score(y_true, y_score, parcels):
     float, emd value
     """
     n_simu, n_classes = y_true.shape
+    assert y_true.shape == y_score.shape
     assert n_classes == len(parcels)
     if y_score.any() is False:
         warnings.warn("Cannot compute EMD with a null y_score. Returned inf")

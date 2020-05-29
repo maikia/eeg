@@ -34,11 +34,13 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         for idx, subject in enumerate(subjects):
             subj_idx = X_used[X_used['subject'] == subject].index
             y_subj = y[subj_idx, :]
+            y_pred_subj = y_pred[subj_idx, :]
             labels_x = np.load(os.path.join(self.data_dir,
                                             subject + '_labels.npz'),
                                allow_pickle=True)['arr_0']
 
-            scores[idx] = emd_score(y_subj, y_pred, labels_x)
+            score = emd_score(y_subj, y_pred_subj, labels_x)
+            scores[idx] = score
             scores[idx] /= len(y_subj)
         score = np.mean(scores) * len(y)
         return score
