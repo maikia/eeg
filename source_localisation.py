@@ -303,7 +303,7 @@ if __name__ == "__main__":
                                    fit_intercept=False)
 
 
-    lasso_lars = SparseRegressor(L, parcel_indices, model)
+    lasso_lars = SparseRegressor(L, parcel_indices, model, data_dir)
 
     # Lead COrrelate
     lc = LeadCorrelate(L, parcel_indices)

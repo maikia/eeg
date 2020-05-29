@@ -14,11 +14,12 @@ def _get_coef(est):
 
 
 class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
-    def __init__(self, lead_field, parcel_indices, model, n_jobs=1):
+    def __init__(self, lead_field, parcel_indices, model, data_dir, n_jobs=1):
         self.lead_field = lead_field
         self.parcel_indices = parcel_indices
         self.model = model
         self.n_jobs = n_jobs
+        self.data_dir = data_dir
 
     def fit(self, X, y):
         return self
@@ -30,18 +31,9 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         import mne
         y_pred = self.predict(X)
 
-        username = os.environ.get('USER')
-        # data_dir = 'data/data_grad_all_26_3'
-        if "mtelen" in username or 'maja' in username:
-            data_dir = 'data/data_grad_sample_42_1'
-        elif "hjana" in username:
-            data_dir = "/storage/store/work/hjanati/datasets/"
-            data_dir += "data_grad_sample_42_1"
-        else:
-            pass
         # labels_x = np.load(os.path.join(data_dir, subject + '_labels.npz'),
         #        allow_pickle=True)['arr_0']
-        labels_x = np.load(os.path.join(data_dir, 'labels.npz'),
+        labels_x = np.load(os.path.join(self.data_dir, 'labels.npz'),
                            allow_pickle=True)['arr_0']
         data_path = mne.datasets.sample.data_path()
         sample_subjects_dir = os.path.join(data_path, 'subjects')
