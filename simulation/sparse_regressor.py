@@ -31,12 +31,17 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         y_pred = self.predict(X)
         subjects = np.unique(X['subject'])
         scores = np.empty(len(subjects))
+        X_used = X.reset_index(drop=True)
         for idx, subject in enumerate(subjects):
+            subj_idx = X_used[X_used['subject'] == subject].index
+            y_subj = y[subj_idx, :]
             labels_x = np.load(os.path.join(self.data_dir,
                                             subject + '_labels.npz'),
                                allow_pickle=True)['arr_0']
 
-            scores[idx] = emd_score(y, y_pred, labels_x)
+            scores[idx] = emd_score(y_subj, y_pred, labels_x)
+            scores[idx] /= len(len(y_subj))
+        score = np.mean(scores) * len(y)
         import pdb; pdb.set_trace()
         return score
 
