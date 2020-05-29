@@ -203,11 +203,6 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     parcel_names = [parcel.name for parcel in parcels_subject]
     parcel_names = np.array(parcel_names)
 
-    # with open(os.path.join(data_dir_specific,
-    #                       'labels.pickle'), 'wb') as outfile:
-    #    pickle.dump(parcel_vertices, outfile)
-    # outfile.close()
-
     # save the labels for the subject
     np.savez(os.path.join(data_dir_specific, subject + '_labels.npz'),
              parcels_subject)
@@ -300,18 +295,15 @@ if __name__ == "__main__":
     n_parcels = 30  # number of parcels per hemisphere
     # (will be reduced by corpus callosum)
     random_state = 42
-    n_samples = 200
+    n_samples = 500
     hemi = 'both'
     n_parcels_max = 1
     signal_type = 'grad'
     make_new = False  # True if rerun all, even already existing dirs
-    username = os.environ.get('USER')
-    if "hjana" in username:
-        data_path = "/storage/store/data/mne_data/MNE-sample-data"
-    else:
-        data_path = mne.datasets.sample.data_path()
-    sample_subjects_dir = os.path.join(data_path, 'subjects')
-    camcan_subjects_dir = '/storage/store/data/camcan-mne/freesurfer'
+
+    data_path = config.get_data_path()
+
+    sample_subjects_dir = config.get_subjects_dir_subj("sample")
     parcels_fsaverage = make_parcels_on_fsaverage(sample_subjects_dir,
                                                   n_parcels=n_parcels,
                                                   random_state=random_state)
@@ -321,16 +313,11 @@ if __name__ == "__main__":
                      'CC120049', 'CC120061', 'CC120120', 'CC120182',
                      'CC120264', 'CC120309', 'CC120313', 'CC120319',
                      'CC120376', 'CC120469', 'CC120550']
-    subject_names = [subject_names[0]]
 
     data_dir = 'data'
     for subject in subject_names:
         # TODO: parallel works only for a single subject, then hangs, repair
-
-        if subject.startswith('CC'):
-            subjects_dir = camcan_subjects_dir
-        else:
-            subjects_dir = sample_subjects_dir
+        subjects_dir = config.get_subjects_dir_subj(subject)
 
         # morph fsaverage labels to the subject we are using
         parcels_subject = mne.morph_labels(parcels_fsaverage, subject,

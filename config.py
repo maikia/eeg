@@ -21,11 +21,19 @@ def get_subjects_dir(dataset_name="camcan"):
 
 
 def get_subjects_dir_subj(subject="sample"):
-    if subject.startswith 'CC':
+    if subject.startswith('CC'):
         dataset_name = "camcan"
     else:
         dataset_name = subject
     return get_subjects_dir(dataset_name)
+
+
+def get_data_path():
+    username = os.environ.get('USER')
+    if "hjana" in username:
+        data_path = "/storage/store/data/mne_data/MNE-sample-data"
+    else:
+        data_path = mne.datasets.sample.data_path()
 
 
 def get_trans_fname(subject, dataset_name="camcan"):
