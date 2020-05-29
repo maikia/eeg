@@ -257,6 +257,7 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
         else:
             ax.plot(df.n_samples_train, df.score_test,
                     label=str(cond[1]) + cond[2])
+
     for idx, parcel in enumerate(diff_parcels):
         if type(ax) == np.ndarray:
             ax[idx].set(xlabel='n_samples_train', ylabel='score',
@@ -266,7 +267,9 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
                    title='Parcels: ' + str(parcel))
         plt.legend()
     plt.tight_layout()
-    plt.savefig('figs/' + file_name + ext)
+    fig_path = os.path.join('figs', file_name + ext)
+    plt.savefig(fig_path)
+    print(('figure saved in {}').format(fig_path))
 
 
 if __name__ == "__main__":
@@ -275,7 +278,7 @@ if __name__ == "__main__":
     calc_learning_rate = True
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_all_42_1'
+    data_dir = 'data_grad_sample_42_3'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -287,8 +290,8 @@ if __name__ == "__main__":
     data_dir = os.path.join(data_dir_base, data_dir)
     signal_type = 'grad'
 
-    # n_samples_grid = 'auto'
-    n_samples_grid = [300]
+    n_samples_grid = 'auto'
+    # n_samples_grid = [300]
     subject = data_dir.split('_')[-3]
 
     # load data
