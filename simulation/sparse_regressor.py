@@ -40,9 +40,9 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
                                allow_pickle=True)['arr_0']
 
             score = emd_score(y_subj, y_pred_subj, labels_x)
-            scores[idx] = score
-            scores[idx] /= len(y_subj)
-        score = np.mean(scores) * len(y)
+            scores[idx] = score * (len(y_subj) / len(y))  # normalize
+
+        score = np.sum(scores)
         return score
 
     def predict(self, X):
