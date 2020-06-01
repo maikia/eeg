@@ -60,6 +60,11 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
     def _run_reweighted_model(self, model, L, X, max_iter_reweighting=100):
         # find the best alpha for each case (weighted model)
         # adapted from https://github.com/hichamjanati/mutar
+
+        # TODO: how to correctly normalize?
+        norms = L.std(axis=0)
+        L = L / norms[None, :]
+
         Xarr = np.array(X)
         tol = 1e-4
         n_tasks = len(X.index.values)
@@ -80,25 +85,19 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             norms = Lw.std(axis=1)
             Lw = Lw / norms[:, None, :]
 
-            # model.estimator.alpha = alpha
-            # model.fit(L, X.T)
-            self.model.alpha = alpha
-            #import pdb; pdb.set_trace()
+            model.alpha = alpha
             for ii in range(Xarr.shape[0]):
-                coef_[ii] = self.model.fit(Lw[ii, :, :], Xarr[ii, :]).coef_
+                coef_[ii] = model.fit(Lw[ii, :, :], Xarr[ii, :]).coef_
 
             coef_ = coef_ * weights
+            coef_ /= norms
 
             err = abs(coef_ - coef_old).max()
             err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
-            # print(err)
+            print(err)
             coef_old = coef_.copy()
             weights = 2 * (abs(coef_) ** 0.5 + 1e-10)
 
-            # import pdb; pdb.set_trace()
-            #obj = 0.5 * (utils.residual(X, coef_, y) ** 2).sum() / n_samples
-            #obj += (self.alpha[None, :] * abs(coef_) ** 0.5).sum()
-            #self.loss_.append(obj)
             if err < tol and i:
                 break
 
@@ -112,6 +111,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         return coef_.T
 
     def _run_model(self, model, L, X, fraction_alpha=0.2):
+        model = MultiOutputRegressor(model, n_jobs=self.n_jobs)
         norms = L.std(axis=0)
         L = L / norms[None, :]
 
@@ -128,7 +128,6 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         return est_coefs.T
 
     def decision_function(self, X):
-        model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
         X = X.reset_index(drop=True)
 
         n_parcels = max(max(s) for s in self.parcel_indices)
@@ -140,9 +139,10 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             X_used = X_used.iloc[:, :-2]
 
             if self.weighted_alpha:
-                est_coef = self._run_reweighted_model(model, l_used, X_used)
+                est_coef = self._run_reweighted_model(self.model, l_used,
+                                                      X_used)
             else:
-                est_coef = self._run_model(model, l_used, X_used)
+                est_coef = self._run_model(self.model, l_used, X_used)
 
             beta = pd.DataFrame(
                        np.abs(est_coef)
