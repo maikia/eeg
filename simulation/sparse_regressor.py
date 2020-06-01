@@ -15,12 +15,14 @@ def _get_coef(est):
 
 
 class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
-    def __init__(self, lead_field, parcel_indices, model, data_dir, n_jobs=1):
+    def __init__(self, lead_field, parcel_indices, model, data_dir, n_jobs=1,
+                 weighted_alpha=True):
         self.lead_field = lead_field
         self.parcel_indices = parcel_indices
         self.model = model
         self.n_jobs = n_jobs
         self.data_dir = data_dir
+        self.weighted_alpha = weighted_alpha
 
     def fit(self, X, y):
         return self
@@ -53,60 +55,56 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         R = y - np.array([x.dot(th) for x, th in zip(X, coef_.T)])
         return R
 
-    def _weighted_model():
-        pass
-
-    def decision_function(self, X):
-        model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
-        X = X.reset_index(drop=True)
-
-        betas = np.empty((len(X), 0)).tolist()
-        for subj_idx in np.unique(X['subject_id']):
-            l_used = self.lead_field[subj_idx]
-
-            X_used = X[X['subject_id'] == subj_idx]
-            X_used = X_used.iloc[:, :-2]
-
-            # adapted from https://github.com/hichamjanati/mutar
-            X_used = np.array(X_used)
+    def _get_weighted_alpha(self, L, X):
+        # find the best alpha for each case (weighted model)
+        # adapted from https://github.com/hichamjanati/mutar
+        import pdb; pdb.set_trace()
+            #X_used = np.array(X_used)
 
             ##### test only ####
-            l_used = np.array([[[3, 1], [2, 0], [1, 0]],\
-                     [[0, 2], [-1, 3], [1, -2]]], dtype=float)
-            coef = np.array([[1., 1.], [0., -1]])
+            # l_used = np.array([[[3, 1], [2, 0], [1, 0]],\
+            #          [[0, 2], [-1, 3], [1, -2]]], dtype=float)
+            # coef = np.array([[1., 1.], [0., -1]])
             # X_used = np.array([x.dot(c) for x, c in zip(l_used, coef.T)])
             # X_used += 0.1
-            X_used = np.array([[[0, 0], [1, 1], [1, 0]],[[1, 0], [0, 0], [1, 1]]])
-            self.alpha = np.asarray([0.1, 0.2])
+            # X_used = np.array([[[0, 0], [1, 1], [1, 0]],[[1, 0], [0, 0], [1, 1]]])
+            # self.alpha = np.asarray([0.1, 0.2])
+            self.alpha = np.asarray(1.)
 
             # X_used = X_used[np.newaxis, :]
             max_iter_reweighting = 100
             n_subjects = len(l_used)
-            n_samples, n_features = l_used[0].shape
 
-            self.coef_ = np.zeros((n_features, n_subjects))
+            n_samples, n_features = l_used.shape
+
+            self.coef_ = np.zeros((len(X_used.index.values), n_features))
             weights = np.ones_like(self.coef_)
             coef_old = self.coef_.copy()
-            self.loss_ = []
+            # self.loss_ = []
             self.tol=1e-4
             # norms = l_used.std(axis=0)
             # l_used = l_used / norms[None, :]
+
             for i in range(max_iter_reweighting):
-                lw = l_used * weights.T[:, None, :]
-                theta = np.zeros((n_features, n_subjects))
+                try:
+                    lw = l_used * weights.T[:, :]
+                except:
+                    import pdb; pdb.set_trace()
+                theta = np.zeros((len(X_used.index.values), n_features))
 
                 # solver lasso
-                for k in range(n_subjects):
-                    alpha_lasso = self.alpha.copy()
-                    alpha_lasso = np.asarray(alpha_lasso).reshape(n_subjects)
-                    #from sklearn.linear_model import Lasso
-                    # lasso = Lasso(alpha=alpha_lasso[k], tol=1e-4, max_iter=2000,
-                    #               fit_intercept=False, positive=False)
-                    model.estimator.alpha = alpha_lasso[k]
-                    model.fit(lw[k], X_used[k])
-                    # model.estimator.alpha = alpha_lasso
+                # for k in range(n_subjects):
+                alpha_lasso = self.alpha.copy()
+                alpha_lasso = np.asarray(alpha_lasso) #.reshape(n_subjects)
+                #from sklearn.linear_model import Lasso
+                # lasso = Lasso(alpha=alpha_lasso[k], tol=1e-4, max_iter=2000,
+                #               fit_intercept=False, positive=False)
+                model.estimator.alpha = alpha_lasso
+                model.fit(lw, X_used.T)
+                # model.estimator.alpha = alpha_lasso
 
-                    theta[:, k] = np.abs(_get_coef(model.estimators_[k]))
+                for idx, idx_used in enumerate(X_used.index.values):
+                    theta[idx, :] = np.abs(_get_coef(model.estimators_[idx]))
                 coef_ = theta * weights
                 err = abs(coef_ - coef_old).max()
                 err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
@@ -119,6 +117,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
                 if err < self.tol and i:
                     break
+                print(err)
 
             if i == max_iter_reweighting - 1 and i:
                 warnings.warn('Reweighted objective did not converge.' +
@@ -127,16 +126,35 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
                           ' Fitting data with very small alpha' +
                           ' may cause precision problems.',
                           ConvergenceWarning)
-            import pdb; pdb.set_trace()
 
-            '''
+
+
+    def _get_fraction_alpha(self, L, X, fraction=0.2):
+        alpha_max = abs(l_used.T.dot(X_used.T)).max() / len(l_used)
+        alpha = fraction * alpha_max
+        return alpha
+
+    def decision_function(self, X):
+        model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
+        X = X.reset_index(drop=True)
+
+        betas = np.empty((len(X), 0)).tolist()
+        for subj_idx in np.unique(X['subject_id']):
+            l_used = self.lead_field[subj_idx]
+
+            X_used = X[X['subject_id'] == subj_idx]
+            X_used = X_used.iloc[:, :-2]
+
             norms = l_used.std(axis=0)
             l_used = l_used / norms[None, :]
 
-            alpha_max = abs(l_used.T.dot(X_used.T)).max() / len(l_used)
-            alpha = 0.2 * alpha_max
+
+            if self.weighted_alpha:
+                alpha = self._get_weighted_alpha(l_used, X_used)
+            else:
+                alpha = self._get_fraction_alpha(l_used, X_used)
             model.estimator.alpha = alpha
-            model.fit(l_used, X_used.T)
+            model.fit(l_used, X_used.T)  # cross validation done here
 
             for idx, idx_used in enumerate(X_used.index.values):
                 est_coef = np.abs(_get_coef(model.estimators_[idx]))
@@ -146,6 +164,5 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
                         ).groupby(
                         self.parcel_indices[subj_idx]).max().transpose()
                 betas[idx_used] = np.array(beta).ravel()
-            '''
         betas = np.array(betas)
         return betas
