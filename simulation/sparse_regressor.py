@@ -120,17 +120,17 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
         model.estimator.alpha = alpha
         model.fit(L, X.T)  # cross validation done here
-
+        est_coefs = np.empty((X.shape[0], L.shape[1]))
         for idx, idx_used in enumerate(X.index.values):
             est_coef = np.abs(_get_coef(model.estimators_[idx]))
             est_coef /= norms
-        return est_coef
+            est_coefs[idx] = est_coef
+        return est_coefs.T
 
     def decision_function(self, X):
         model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
         X = X.reset_index(drop=True)
 
-        #betas = np.empty((len(X), 0)).tolist()
         n_parcels = max(max(s) for s in self.parcel_indices)
         betas = np.empty((len(X), n_parcels))
         for subj_idx in np.unique(X['subject_id']):
@@ -139,21 +139,15 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             X_used = X[X['subject_id'] == subj_idx]
             X_used = X_used.iloc[:, :-2]
 
-            norms = l_used.std(axis=0)
-            l_used = l_used / norms[None, :]
-
-            self.weighted_alpha = False
             if self.weighted_alpha:
                 est_coef = self._run_reweighted_model(model, l_used, X_used)
             else:
                 est_coef = self._run_model(model, l_used, X_used)
 
-            # for idx, idx_used in enumerate(X_used.index.values):
             beta = pd.DataFrame(
-                   np.abs(est_coef)
+                       np.abs(est_coef)
                    ).groupby(
                    self.parcel_indices[subj_idx]).max().transpose()
-            betas[X['subject_id'] == subj_idx] = np.array(beta).ravel()
-        #betas = np.array(betas)
+            betas[X['subject_id'] == subj_idx] = np.array(beta)
         return betas
 
