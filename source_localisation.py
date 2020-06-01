@@ -273,12 +273,12 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     calc_scores_for_lc = False
     calc_learning_rate = True
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_sample_42_3'
+    data_dir = 'data_grad_sample_112_1'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -290,8 +290,8 @@ if __name__ == "__main__":
     data_dir = os.path.join(data_dir_base, data_dir)
     signal_type = 'grad'
 
-    n_samples_grid = 'auto'
-    # n_samples_grid = [300]
+    # n_samples_grid = 'auto'
+    n_samples_grid = [300]
     subject = data_dir.split('_')[-3]
 
     # load data
@@ -344,10 +344,10 @@ if __name__ == "__main__":
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-    if plot_data and False:
+    if True: #plot_data: # and False:
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
                                   n_samples='all')
     if False:
-        display_distances_on_brain(data_dir, subject='CC110033')
+        display_distances_on_brain(data_dir, subject='sample')

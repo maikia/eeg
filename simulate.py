@@ -292,14 +292,14 @@ def simulate_for_subject(subject, data_path, parcels_subject,
 
 if __name__ == "__main__":
     # same variables
-    n_parcels = 30  # number of parcels per hemisphere
+    n_parcels = 70  # number of parcels per hemisphere
     # (will be reduced by corpus callosum)
     random_state = 42
     n_samples = 500
     hemi = 'both'
     n_parcels_max = 1
     signal_type = 'grad'
-    make_new = False  # True if rerun all, even already existing dirs
+    make_new = True  # True if rerun all, even already existing dirs
 
     data_path = config.get_data_path()
 

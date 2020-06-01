@@ -9,8 +9,8 @@ import shutil
 # read the data from the given subjects
 subjects = 'all'
 signal_type = 'grad'
-n_parcels_max = 3
-no_parcels = 26
+n_parcels_max = 1
+no_parcels = 42
 
 # combine them in one datafile with each sample: data from electrodes,
 # subject_name, signal_type
