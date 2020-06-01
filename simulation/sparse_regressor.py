@@ -4,6 +4,7 @@ import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
 from sklearn.multioutput import MultiOutputRegressor
+import warnings
 
 from simulation.emd import emd_score
 
@@ -29,6 +30,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
     def score(self, X, y):
         # overwites given score with the EMD score (based on the distance)
+
         y_pred = self.predict(X)
         subjects = np.unique(X['subject'])
         scores = np.empty(len(subjects))
@@ -55,90 +57,82 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         R = y - np.array([x.dot(th) for x, th in zip(X, coef_.T)])
         return R
 
-    def _get_weighted_alpha(self, L, X):
+    def _run_reweighted_model(self, model, L, X, max_iter_reweighting=100):
         # find the best alpha for each case (weighted model)
         # adapted from https://github.com/hichamjanati/mutar
-        import pdb; pdb.set_trace()
-            #X_used = np.array(X_used)
+        Xarr = np.array(X)
+        tol = 1e-4
+        n_tasks = len(X.index.values)
+        n_samples, n_features = L.shape
+        coef_ = np.zeros((n_tasks, n_features))
 
-            ##### test only ####
-            # l_used = np.array([[[3, 1], [2, 0], [1, 0]],\
-            #          [[0, 2], [-1, 3], [1, -2]]], dtype=float)
-            # coef = np.array([[1., 1.], [0., -1]])
-            # X_used = np.array([x.dot(c) for x, c in zip(l_used, coef.T)])
-            # X_used += 0.1
-            # X_used = np.array([[[0, 0], [1, 1], [1, 0]],[[1, 0], [0, 0], [1, 1]]])
-            # self.alpha = np.asarray([0.1, 0.2])
-            self.alpha = np.asarray(1.)
+        weights = np.ones(coef_.shape)  # np.ones_like(coef_[0, :])
+        loss_ = []
+        coef_old = coef_.copy()
 
-            # X_used = X_used[np.newaxis, :]
-            max_iter_reweighting = 100
-            n_subjects = len(l_used)
+        alpha_max = abs(L.T.dot(X.T)).max() / len(L)
+        alpha = 0.2 * alpha_max
+        for i in range(max_iter_reweighting):
+            Lw = L[None, :, :]
+            weights_ = weights[:, None, :]
+            Lw = Lw * weights_
 
-            n_samples, n_features = l_used.shape
+            norms = Lw.std(axis=1)
+            Lw = Lw / norms[:, None, :]
 
-            self.coef_ = np.zeros((len(X_used.index.values), n_features))
-            weights = np.ones_like(self.coef_)
-            coef_old = self.coef_.copy()
-            # self.loss_ = []
-            self.tol=1e-4
-            # norms = l_used.std(axis=0)
-            # l_used = l_used / norms[None, :]
+            # model.estimator.alpha = alpha
+            # model.fit(L, X.T)
+            self.model.alpha = alpha
+            #import pdb; pdb.set_trace()
+            for ii in range(Xarr.shape[0]):
+                coef_[ii] = self.model.fit(Lw[ii, :, :], Xarr[ii, :]).coef_
 
-            for i in range(max_iter_reweighting):
-                try:
-                    lw = l_used * weights.T[:, :]
-                except:
-                    import pdb; pdb.set_trace()
-                theta = np.zeros((len(X_used.index.values), n_features))
+            coef_ = coef_ * weights
 
-                # solver lasso
-                # for k in range(n_subjects):
-                alpha_lasso = self.alpha.copy()
-                alpha_lasso = np.asarray(alpha_lasso) #.reshape(n_subjects)
-                #from sklearn.linear_model import Lasso
-                # lasso = Lasso(alpha=alpha_lasso[k], tol=1e-4, max_iter=2000,
-                #               fit_intercept=False, positive=False)
-                model.estimator.alpha = alpha_lasso
-                model.fit(lw, X_used.T)
-                # model.estimator.alpha = alpha_lasso
+            err = abs(coef_ - coef_old).max()
+            err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
+            # print(err)
+            coef_old = coef_.copy()
+            weights = 2 * (abs(coef_) ** 0.5 + 1e-10)
 
-                for idx, idx_used in enumerate(X_used.index.values):
-                    theta[idx, :] = np.abs(_get_coef(model.estimators_[idx]))
-                coef_ = theta * weights
-                err = abs(coef_ - coef_old).max()
-                err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
-                coef_old = coef_.copy()
-                weights = 2 * (abs(coef_) ** 0.5 + 1e-10)
-                # import pdb; pdb.set_trace()
-                # obj = 0.5 * (self.residual(lw, coef_, X_used) ** 2).sum() / n_samples
-                # obj += (self.alpha[None, :] * abs(coef_) ** 0.5).sum()
-                # self.loss_.append(obj)
+            # import pdb; pdb.set_trace()
+            #obj = 0.5 * (utils.residual(X, coef_, y) ** 2).sum() / n_samples
+            #obj += (self.alpha[None, :] * abs(coef_) ** 0.5).sum()
+            #self.loss_.append(obj)
+            if err < tol and i:
+                break
 
-                if err < self.tol and i:
-                    break
-                print(err)
-
-            if i == max_iter_reweighting - 1 and i:
-                warnings.warn('Reweighted objective did not converge.' +
-                              ' You might want to increase ' +
+        if i == max_iter_reweighting - 1 and i:
+            warnings.warn('Reweighted objective did not converge.' +
+                          ' You might want to increase ' +
                           'the number of iterations of reweighting.' +
                           ' Fitting data with very small alpha' +
                           ' may cause precision problems.',
                           ConvergenceWarning)
+        return coef_.T
 
+    def _run_model(self, model, L, X, fraction_alpha=0.2):
+        norms = L.std(axis=0)
+        L = L / norms[None, :]
 
+        alpha_max = abs(L.T.dot(X.T)).max() / len(L)
+        alpha = fraction_alpha * alpha_max
 
-    def _get_fraction_alpha(self, L, X, fraction=0.2):
-        alpha_max = abs(l_used.T.dot(X_used.T)).max() / len(l_used)
-        alpha = fraction * alpha_max
-        return alpha
+        model.estimator.alpha = alpha
+        model.fit(L, X.T)  # cross validation done here
+
+        for idx, idx_used in enumerate(X.index.values):
+            est_coef = np.abs(_get_coef(model.estimators_[idx]))
+            est_coef /= norms
+        return est_coef
 
     def decision_function(self, X):
         model = MultiOutputRegressor(self.model, n_jobs=self.n_jobs)
         X = X.reset_index(drop=True)
 
-        betas = np.empty((len(X), 0)).tolist()
+        #betas = np.empty((len(X), 0)).tolist()
+        n_parcels = max(max(s) for s in self.parcel_indices)
+        betas = np.empty((len(X), n_parcels))
         for subj_idx in np.unique(X['subject_id']):
             l_used = self.lead_field[subj_idx]
 
@@ -148,21 +142,18 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             norms = l_used.std(axis=0)
             l_used = l_used / norms[None, :]
 
-
+            self.weighted_alpha = False
             if self.weighted_alpha:
-                alpha = self._get_weighted_alpha(l_used, X_used)
+                est_coef = self._run_reweighted_model(model, l_used, X_used)
             else:
-                alpha = self._get_fraction_alpha(l_used, X_used)
-            model.estimator.alpha = alpha
-            model.fit(l_used, X_used.T)  # cross validation done here
+                est_coef = self._run_model(model, l_used, X_used)
 
-            for idx, idx_used in enumerate(X_used.index.values):
-                est_coef = np.abs(_get_coef(model.estimators_[idx]))
-                est_coef /= norms
-                beta = pd.DataFrame(
-                        np.abs(est_coef)
-                        ).groupby(
-                        self.parcel_indices[subj_idx]).max().transpose()
-                betas[idx_used] = np.array(beta).ravel()
-        betas = np.array(betas)
+            # for idx, idx_used in enumerate(X_used.index.values):
+            beta = pd.DataFrame(
+                   np.abs(est_coef)
+                   ).groupby(
+                   self.parcel_indices[subj_idx]).max().transpose()
+            betas[X['subject_id'] == subj_idx] = np.array(beta).ravel()
+        #betas = np.array(betas)
         return betas
+
