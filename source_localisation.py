@@ -344,7 +344,7 @@ if __name__ == "__main__":
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-    if True: #plot_data: # and False:
+    if True:  # plot_data: # and False:
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
                                   model_name='lasso lars',
