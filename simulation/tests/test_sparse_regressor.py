@@ -63,16 +63,26 @@ def test_sparse_regressor(solver):
     if solver == 'lasso_lars':
         model = linear_model.LassoLars(max_iter=3, normalize=False,
                                        fit_intercept=False)
-    X, y, L, parcel_indices = make_dataset()
+
+    n_subjects = 1
+    n_samples_per_subj = 2
+    n_parcels = 10
+    n_sources = 300
+    n_sensors = 100
+    max_true_sources = 1
+    X, y, L, parcel_indices = make_dataset(
+        n_subjects, n_samples_per_subj, n_parcels, n_sources,
+        n_sensors, max_true_sources
+    )
 
     # assert that all the dimensions correspond
-    assert X[X['subject_id'] == 0].shape[0]  # n_samples_per_subj
+    assert X.shape == (n_samples_per_subj * n_subjects, n_sensors + 2)
+    assert X['subject_id'].unique() == np.arange(n_subjects)
     assert X.shape[0] == y.shape[0]
-    # n_subjects
-    assert len(L) == len(X['subject_id'].unique()) == len(parcel_indices)
-    assert L[0].shape[0] == len(X.columns) - 2  # n_sensors
-    assert L[0].shape[1] == len(parcel_indices[0])  # n_sources
-    assert y.shape[1] == len(np.unique(parcel_indices))  # n_parcels
+
+    assert len(L) == n_subjects == len(parcel_indices)
+    assert L[0].shape == (n_sensors, n_sources)
+    assert y.shape[1] == n_parcels
 
     sparse_regressor = SparseRegressor(L, parcel_indices, model)
 
