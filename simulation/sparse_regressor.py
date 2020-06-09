@@ -1,12 +1,13 @@
 import numpy as np
-import os
 import pandas as pd
 
 from sklearn.base import BaseEstimator, ClassifierMixin, TransformerMixin
+from sklearn.exceptions import ConvergenceWarning
 from sklearn.multioutput import MultiOutputRegressor
 import warnings
 
-from simulation.emd import emd_score
+from sklearn.metrics import hamming_loss
+# from simulation.emd import emd_score
 
 
 def _get_coef(est):
@@ -16,13 +17,14 @@ def _get_coef(est):
 
 
 class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
-    def __init__(self, lead_field, parcel_indices, model, data_dir, n_jobs=1,
+    def __init__(self, lead_field, parcel_indices, model, n_jobs=1,
                  weighted_alpha=True):
         self.lead_field = lead_field
         self.parcel_indices = parcel_indices
         self.model = model
         self.n_jobs = n_jobs
-        self.data_dir = data_dir
+        # self.data_dir = data_dir # this is required only if EMD score would
+        # be used
         self.weighted_alpha = weighted_alpha
 
     def fit(self, X, y):
@@ -32,6 +34,9 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         # overwites given score with the EMD score (based on the distance)
 
         y_pred = self.predict(X)
+
+        score = hamming_loss(y, y_pred)
+        '''
         subjects = np.unique(X['subject'])
         scores = np.empty(len(subjects))
         X_used = X.reset_index(drop=True)
@@ -47,6 +52,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
             scores[idx] = score * (len(y_subj) / len(y))  # normalize
 
         score = np.sum(scores)
+        '''
         return score
 
     def predict(self, X):
@@ -58,7 +64,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         return R
 
     def _run_reweighted_model(self, model, L, X, max_iter_reweighting=100):
-        # find the best alpha for each case (weighted model)
+        # weighted model
         # adapted from https://github.com/hichamjanati/mutar
 
         # TODO: how to correctly normalize?
@@ -72,25 +78,26 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
         coef_ = np.zeros((n_tasks, n_features))
 
         weights = np.ones(coef_.shape)  # np.ones_like(coef_[0, :])
-        loss_ = []
         coef_old = coef_.copy()
 
+        # TODO: calculate it for each L separately
         alpha_max = abs(L.T.dot(X.T)).max() / len(L)
-        alpha = 0.2 * alpha_max
+        alpha = 0.05 * alpha_max
+        model.alpha = alpha
+        max_iter_reweighting = 2
+        # TODO: exchange ordering of the for loops (so less data in the mem)
         for i in range(max_iter_reweighting):
             Lw = L[None, :, :]
             weights_ = weights[:, None, :]
             Lw = Lw * weights_
 
-            norms = Lw.std(axis=1)
-            Lw = Lw / norms[:, None, :]
+            # norms = Lw.std(axis=1)
+            # Lw = Lw / norms[:, None, :]
 
-            model.alpha = alpha
             for ii in range(Xarr.shape[0]):
                 coef_[ii] = model.fit(Lw[ii, :, :], Xarr[ii, :]).coef_
 
             coef_ = coef_ * weights
-            coef_ /= norms
 
             err = abs(coef_ - coef_old).max()
             err /= max(abs(coef_).max(), abs(coef_old).max(), 1.)
@@ -100,6 +107,7 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
 
             if err < tol and i:
                 break
+        coef_ /= norms
 
         if i == max_iter_reweighting - 1 and i:
             warnings.warn('Reweighted objective did not converge.' +
@@ -150,4 +158,3 @@ class SparseRegressor(BaseEstimator, ClassifierMixin, TransformerMixin):
                    self.parcel_indices[subj_idx]).max().transpose()
             betas[X['subject_id'] == subj_idx] = np.array(beta)
         return betas
-
