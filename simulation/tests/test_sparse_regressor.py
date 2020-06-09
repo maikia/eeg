@@ -5,6 +5,7 @@ import numpy.random as random
 import pandas as pd
 
 from sklearn import linear_model
+from sklearn.model_selection import cross_validate, train_test_split
 
 from simulation.sparse_regressor import SparseRegressor
 
@@ -12,7 +13,7 @@ SEED = 42
 
 
 @pytest.fixture
-def make_dataset(n_subjects=1, n_samples_per_subj=100, n_parcels=10,
+def make_dataset(n_subjects=1, n_samples_per_subj=2, n_parcels=10,
                  n_sources=300, n_sensors=100, max_true_sources=1):
     # TODO: here each L will be of the same size, change so that sources_no
     # varies between subjects
@@ -74,4 +75,10 @@ def test_sparse_regressor(make_dataset, solver):
     assert L[0].shape[1] == len(parcel_indices[0])  # n_sources
     assert y.shape[1] == len(np.unique(parcel_indices))  # n_parcels
 
-    lasso_lars = SparseRegressor(L, parcel_indices, model)
+    sparse_regressor = SparseRegressor(L, parcel_indices, model)
+
+    X_train, X_test, y_train, y_test = \
+        train_test_split(X, y, test_size=0.2, random_state=42)
+
+    sparse_regressor.fit(X_train, y_train)
+    score = sparse_regressor.score(X_test, y_test)
