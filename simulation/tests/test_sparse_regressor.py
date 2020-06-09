@@ -65,4 +65,13 @@ def test_sparse_regressor(make_dataset, solver):
                                        fit_intercept=False)
     X, y, L, parcel_indices = make_dataset
 
+    # assert that all the dimensions correspond
+    assert X[X['subject_id'] == 0].shape[0]  # n_samples_per_subj
+    assert X.shape[0] == y.shape[0]
+    # n_subjects
+    assert len(L) == len(X['subject_id'].unique()) == len(parcel_indices)
+    assert L[0].shape[0] == len(X.columns) - 2  # n_sensors
+    assert L[0].shape[1] == len(parcel_indices[0])  # n_sources
+    assert y.shape[1] == len(np.unique(parcel_indices))  # n_parcels
+
     lasso_lars = SparseRegressor(L, parcel_indices, model)
