@@ -12,7 +12,6 @@ from simulation.sparse_regressor import SparseRegressor
 SEED = 42
 
 
-@pytest.fixture
 def make_dataset(n_subjects=1, n_samples_per_subj=2, n_parcels=10,
                  n_sources=300, n_sensors=100, max_true_sources=1):
     # TODO: here each L will be of the same size, change so that sources_no
@@ -60,11 +59,11 @@ def make_dataset(n_subjects=1, n_samples_per_subj=2, n_parcels=10,
 
 @pytest.mark.parametrize('solver',
                          ['lasso_lars'])
-def test_sparse_regressor(make_dataset, solver):
+def test_sparse_regressor(solver):
     if solver == 'lasso_lars':
         model = linear_model.LassoLars(max_iter=3, normalize=False,
                                        fit_intercept=False)
-    X, y, L, parcel_indices = make_dataset
+    X, y, L, parcel_indices = make_dataset()
 
     # assert that all the dimensions correspond
     assert X[X['subject_id'] == 0].shape[0]  # n_samples_per_subj
