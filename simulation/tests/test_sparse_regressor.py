@@ -7,6 +7,7 @@ import numpy as np
 import numpy.random as random
 import os
 import pandas as pd
+from scipy.sparse import csr_matrix
 
 from sklearn import linear_model
 from sklearn.model_selection import cross_validate, train_test_split
@@ -14,23 +15,102 @@ from sklearn.metrics import hamming_loss, jaccard_score
 
 from simulation.sparse_regressor import SparseRegressor, ReweightedLasso
 
+
 SEED = 42
 
 
 def make_dataset_from_sample():
-    data_path = sample.data_path()
-    raw_fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
-    evoked = mne.read_evokeds(raw_fname, condition='Left Auditory',
-                              baseline=(None, 0))
+    # assign paths
+    data_path = mne.datasets.sample.data_path()
+    subjects_dir = os.path.join(data_path, 'subjects')
 
-    fwd_fname = os.path.join(data_path, 'MEG/sample/sample_audvis-meg-eeg-oct-6-fwd.fif')
+    # get parcels and remove corpus callosum
+    parcels = mne.read_labels_from_annot('fsaverage', 'HCPMMP1_combined',
+                                         'both', subjects_dir=subjects_dir)[1:]
+    # morph from fsaverage to sample
+    parcels = mne.morph_labels(parcels, 'sample', 'fsaverage', subjects_dir,
+                               'white')
+
+    subjects_dir = mne.datasets.sample.data_path() + '/subjects'
+    mne.datasets.fetch_hcp_mmp_parcellation(subjects_dir=subjects_dir,
+                                            verbose=True)
+
+    raw_fname = os.path.join(data_path, 'MEG', 'sample',
+                             'sample_audvis_raw.fif')
+    fwd_fname = os.path.join(data_path, 'MEG', 'sample',
+                             'sample_audvis-meg-eeg-oct-6-fwd.fif')
+    assert os.path.exists(raw_fname)
+    assert os.path.exists(fwd_fname)
+
+    info = mne.io.read_info(raw_fname)
+    sel = mne.pick_types(info, meg='grad', eeg=False, stim=True, exclude=[])
+    info = mne.pick_info(info, sel)
+    tstep = 1. / info['sfreq']
+
+    # read forward solution
     fwd = mne.read_forward_solution(fwd_fname)
+    src = fwd['src']
+
+    rng = np.random.RandomState(42)
+
+    n_samples = 2
+    signal_len = 10
+    n_events = 50
+    add_noise = False
+    source_time_series = np.sin(2. * np.pi *
+                                18. * np.arange(signal_len) * tstep) * 10e-9
+
+    events = np.zeros((n_events, 3), dtype=int)
+    events[:, 0] = signal_len * len(parcels) + 200 * np.arange(n_events)
+    events[:, 2] = 1  # All events have the sample id.
+
+    signal_list = []
+    true_idx = np.empty(n_samples, dtype=np.int16)
+    for idx, source in enumerate(range(n_samples)):
+        idx_source = rng.choice(np.arange(len(parcels)))
+        true_idx[idx] = int(idx_source)
+        source = parcels[idx_source]
+
+        source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
+        source_simulator.add_data(source, source_time_series, events)
+
+        raw = mne.simulation.simulate_raw(info, source_simulator, forward=fwd)
+
+        if add_noise:
+            cov = mne.make_ad_hoc_cov(raw.info)
+            mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
+
+        evoked = mne.Epochs(raw, events, tmax=0.3).average()
+        data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
+        signal_list.append(data)
+    # data <=signal_list
+    # names_parcels_selected <= target_list
+    # to_activate <= activated
+
+    signal_list = np.array(signal_list)
+    data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
+
+    X = pd.DataFrame(signal_list, columns=list(data_labels))
+    X['subject_id'] = 0
+    X['subject'] = '0'
+
+    y_empty = np.zeros((n_samples, len(parcels)))
+    y_empty[np.arange(n_samples), true_idx] = 1
+    y = y_empty  # csr_matrix(y_empty, dtype=np.int8)
+
+    # ok here
+
     fwd = mne.convert_forward_solution(fwd, force_fixed=True)
-    picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False, exclude=[])
     lead_field = fwd['sol']['data']
+    picks_meg = mne.pick_types(fwd['info'], meg='grad',
+                               eeg=False, exclude=[])
     lead_field = lead_field[picks_meg, :]
 
-    stc = mne.read_source_estimate(fname_stc)
+    parcel_vertices = {}
+    for idx, parcel in enumerate(parcels):
+        parcel_name = str(idx) + parcel.name[-3:]
+        parcel_vertices[parcel_name] = parcel.vertices
+        parcel.name = parcel_name
 
     parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
     parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
@@ -40,12 +120,19 @@ def make_dataset_from_sample():
             parcel_indices_lh[label_idx] = label_id
         else:
             parcel_indices_rh[label_idx] = label_id
-    import pdb; pdb.set_trace()
-    # return X, y, lead_field, parcel_indices
-    return lead_field
 
-def test_sample():
-    make_dataset_from_sample()
+    # Make sure label numbers different for each hemisphere
+    parcel_indices = np.concatenate((parcel_indices_lh,
+                                    parcel_indices_rh), axis=0)
+
+    # Now pick vertices that are actually used in the forward
+    inuse = np.concatenate((fwd['src'][0]['inuse'],
+                            fwd['src'][1]['inuse']), axis=0)
+
+    parcel_indices = parcel_indices[np.where(inuse)[0]]
+    assert len(parcel_indices) == lead_field.shape[1]
+
+    return X, y, [lead_field], [parcel_indices]
 
 
 def make_dataset(n_subjects=1, n_samples_per_subj=2, n_parcels=10,
@@ -99,29 +186,30 @@ rwl10 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
 
 @pytest.mark.parametrize('model, hl_max',
                          [(lasso, 0.02),
-                          (rwl1, 0),
-                          (rwl10, 0.002)
+                          #(rwl1, 0),
+                          #(rwl10, 0.002)
                           ])
 def test_sparse_regressor(model, hl_max):
     n_subjects = 1
-    n_samples_per_subj = 100
+    n_samples_per_subj = 2
     n_parcels = 10
     n_sources = 500
     n_sensors = 100
-    max_true_sources = 2
+    max_true_sources = 1
     X, y, L, parcel_indices = make_dataset(
         n_subjects, n_samples_per_subj, n_parcels, n_sources,
         n_sensors, max_true_sources
     )
-
+    X, y, L, parcel_indices = make_dataset_from_sample()
     # assert that all the dimensions correspond
-    assert X.shape == (n_samples_per_subj * n_subjects, n_sensors + 2)
-    assert X['subject_id'].unique() == np.arange(n_subjects)
+
+    # assert X.shape == (n_samples_per_subj * n_subjects, n_sensors + 2)
+    # assert X['subject_id'].unique() == np.arange(n_subjects)
     assert X.shape[0] == y.shape[0]
 
     assert len(L) == n_subjects == len(parcel_indices)
-    assert L[0].shape == (n_sensors, n_sources)
-    assert y.shape[1] == n_parcels
+    # assert L[0].shape == (n_sensors, n_sources)
+    # assert y.shape[1] == n_parcels
     assert np.mean(y.sum(1) == max_true_sources) > 0.9
 
     sparse_regressor = SparseRegressor(
