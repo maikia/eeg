@@ -1,7 +1,11 @@
 import pytest
 
+import mne
+from mne.datasets import sample
+
 import numpy as np
 import numpy.random as random
+import os
 import pandas as pd
 
 from sklearn import linear_model
@@ -11,6 +15,37 @@ from sklearn.metrics import hamming_loss, jaccard_score
 from simulation.sparse_regressor import SparseRegressor, ReweightedLasso
 
 SEED = 42
+
+
+def make_dataset_from_sample():
+    data_path = sample.data_path()
+    raw_fname = data_path + '/MEG/sample/sample_audvis-ave.fif'
+    evoked = mne.read_evokeds(raw_fname, condition='Left Auditory',
+                              baseline=(None, 0))
+
+    fwd_fname = os.path.join(data_path, 'MEG/sample/sample_audvis-meg-eeg-oct-6-fwd.fif')
+    fwd = mne.read_forward_solution(fwd_fname)
+    fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+    picks_meg = mne.pick_types(fwd['info'], meg=True, eeg=False, exclude=[])
+    lead_field = fwd['sol']['data']
+    lead_field = lead_field[picks_meg, :]
+
+    stc = mne.read_source_estimate(fname_stc)
+
+    parcel_indices_lh = np.zeros(len(fwd['src'][0]['inuse']), dtype=int)
+    parcel_indices_rh = np.zeros(len(fwd['src'][1]['inuse']), dtype=int)
+    for label_name, label_idx in parcel_vertices.items():
+        label_id = int(label_name[:-3])
+        if '-lh' in label_name:
+            parcel_indices_lh[label_idx] = label_id
+        else:
+            parcel_indices_rh[label_idx] = label_id
+    import pdb; pdb.set_trace()
+    # return X, y, lead_field, parcel_indices
+    return lead_field
+
+def test_sample():
+    make_dataset_from_sample()
 
 
 def make_dataset(n_subjects=1, n_samples_per_subj=2, n_parcels=10,
@@ -59,7 +94,7 @@ lasso = linear_model.LassoLars(max_iter=2, normalize=False,
 rwl1 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
                        max_iter_reweighting=1, tol=1e-4)
 rwl10 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
-                       max_iter_reweighting=10, tol=1e-4)
+                        max_iter_reweighting=10, tol=1e-4)
 
 
 @pytest.mark.parametrize('model, hl_max',
