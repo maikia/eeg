@@ -1,13 +1,11 @@
 import pytest
 
 import mne
-from mne.datasets import sample
 
 import numpy as np
-import numpy.random as random
 import os
 import pandas as pd
-from scipy.sparse import csr_matrix
+
 
 from sklearn import linear_model
 from sklearn.model_selection import cross_validate, train_test_split
@@ -128,11 +126,8 @@ def make_dataset_from_sample():
     X['subject_id'] = 0
     X['subject'] = '0'
 
-    y_empty = np.zeros((n_samples, len(parcels)))
-    y_empty[np.arange(n_samples), true_idx] = 1
-    y = y_empty  # csr_matrix(y_empty, dtype=np.int8)
-
-    # ok here
+    y = np.zeros((n_samples, len(parcels)))
+    y[np.arange(n_samples), true_idx] = 1
 
     fwd = mne.convert_forward_solution(fwd, force_fixed=True)
     lead_field = fwd['sol']['data']
@@ -141,7 +136,7 @@ def make_dataset_from_sample():
     lead_field = lead_field[picks_meg, :]
 
     parcel_vertices = {}
-    for idx, parcel in enumerate(parcels):
+    for idx, parcel in enumerate(parcels, 1):
         parcel_name = str(idx) + parcel.name[-3:]
         parcel_vertices[parcel_name] = parcel.vertices
         parcel.name = parcel_name
@@ -222,9 +217,9 @@ rwl10 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
 
 
 @pytest.mark.parametrize('model, hl_max',
-                         [#(lasso, 0.02),
+                         [(lasso, 0.02),
                           (rwl1, 0),
-                          #(rwl10, 0.002)
+                          (rwl10, 0.002)
                           ])
 def test_sparse_regressor(model, hl_max):
     n_subjects = 1
@@ -254,6 +249,5 @@ def test_sparse_regressor(model, hl_max):
     )
 
     y_pred = sparse_regressor.predict(X)
-    import pdb; pdb.set_trace()
     hl = hamming_loss(y_pred, y)
     assert hl <= hl_max
