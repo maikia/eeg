@@ -18,6 +18,7 @@ from mne import read_labels_from_annot
 SEED = 42
 
 
+@pytest.fixture(scope="session")
 def make_dataset_from_sample():
     # assign paths
     data_path = mne.datasets.sample.data_path()
@@ -223,16 +224,16 @@ rwl10 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
                           ])
 def test_sparse_regressor(model, hl_max):
     n_subjects = 1
-    n_samples_per_subj = 2
+    n_samples_per_subj = 100
     n_parcels = 10
     n_sources = 500
     n_sensors = 100
-    max_true_sources = 1
+    max_true_sources = 2
     X, y, L, parcel_indices = make_dataset(
         n_subjects, n_samples_per_subj, n_parcels, n_sources,
         n_sensors, max_true_sources
     )
-    X, y, L, parcel_indices = make_dataset()
+
     # assert that all the dimensions correspond
     assert X.shape == (n_samples_per_subj * n_subjects, n_sensors + 2)
     assert X['subject_id'].unique() == np.arange(n_subjects)
@@ -257,7 +258,7 @@ def test_sparse_regressor(model, hl_max):
                           (rwl1, 0),
                           (rwl10, 0.002)
                           ])
-def test_sparse_regressor_on_sample(model, hl_max):
+def test_sparse_regressor_on_sample(make_dataset_from_sample, model, hl_max):
     n_subjects = 1
     n_samples_per_subj = 2
     n_parcels = 10
@@ -268,7 +269,7 @@ def test_sparse_regressor_on_sample(model, hl_max):
         n_subjects, n_samples_per_subj, n_parcels, n_sources,
         n_sensors, max_true_sources
     )
-    X, y, L, parcel_indices = make_dataset_from_sample()
+    X, y, L, parcel_indices = make_dataset_from_sample
     assert X.shape[0] == y.shape[0]
 
     assert len(L) == n_subjects == len(parcel_indices)
