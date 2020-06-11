@@ -17,9 +17,20 @@ SEED = 42
 
 @pytest.fixture(scope="session")
 def make_dataset_from_sample():
+    n_samples = 100
+    signal_len = 10
+    n_events = 50
+    add_noise = False
+
     # assign paths
     data_path = mne.datasets.sample.data_path()
     subjects_dir = os.path.join(data_path, 'subjects')
+    raw_fname = os.path.join(data_path, 'MEG', 'sample',
+                             'sample_audvis_raw.fif')
+    fwd_fname = os.path.join(data_path, 'MEG', 'sample',
+                             'sample_audvis-meg-eeg-oct-6-fwd.fif')
+    assert os.path.exists(raw_fname)
+    assert os.path.exists(fwd_fname)
 
     # get parcels and remove corpus callosum
     parcels = mne.read_labels_from_annot('fsaverage', 'HCPMMP1_combined',
@@ -65,28 +76,19 @@ def make_dataset_from_sample():
     mne.datasets.fetch_hcp_mmp_parcellation(subjects_dir=subjects_dir,
                                             verbose=True)
 
-    raw_fname = os.path.join(data_path, 'MEG', 'sample',
-                             'sample_audvis_raw.fif')
-    fwd_fname = os.path.join(data_path, 'MEG', 'sample',
-                             'sample_audvis-meg-eeg-oct-6-fwd.fif')
-    assert os.path.exists(raw_fname)
-    assert os.path.exists(fwd_fname)
+    # read forward solution
+    fwd = mne.read_forward_solution(fwd_fname)
+    fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+    src = fwd['src']
 
+    # simulate the signal
     info = mne.io.read_info(raw_fname)
     sel = mne.pick_types(info, meg='grad', eeg=False, stim=True, exclude=[])
     info = mne.pick_info(info, sel)
     tstep = 1. / info['sfreq']
 
-    # read forward solution
-    fwd = mne.read_forward_solution(fwd_fname)
-    src = fwd['src']
+    rng = np.random.RandomState(SEED)
 
-    rng = np.random.RandomState(42)
-
-    n_samples = 2
-    signal_len = 10
-    n_events = 50
-    add_noise = False
     source_time_series = np.sin(2. * np.pi *
                                 18. * np.arange(signal_len) * tstep) * 10e-9
 
@@ -117,19 +119,20 @@ def make_dataset_from_sample():
     signal_list = np.array(signal_list)
     data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
 
+    # assing data and target
     X = pd.DataFrame(signal_list, columns=list(data_labels))
     X['subject_id'] = 0
-    X['subject'] = '0'
+    X['subject'] = 'sample'
 
     y = np.zeros((n_samples, len(parcels)))
     y[np.arange(n_samples), true_idx] = 1
 
-    fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+    # read lead field
     lead_field = fwd['sol']['data']
-    picks_meg = mne.pick_types(fwd['info'], meg='grad',
-                               eeg=False, exclude=[])
+    picks_meg = mne.pick_types(fwd['info'], meg='grad', eeg=False, exclude=[])
     lead_field = lead_field[picks_meg, :]
 
+    # remove not used vertices from lead_field and parcel_indices
     parcel_vertices = {}
     for idx, parcel in enumerate(parcels, 1):
         parcel_name = str(idx) + parcel.name[-3:]
