@@ -15,6 +15,7 @@ from sklearn.metrics import hamming_loss, jaccard_score
 
 from simulation.sparse_regressor import SparseRegressor, ReweightedLasso
 
+from mne import read_labels_from_annot
 
 SEED = 42
 
@@ -26,7 +27,40 @@ def make_dataset_from_sample():
 
     # get parcels and remove corpus callosum
     parcels = mne.read_labels_from_annot('fsaverage', 'HCPMMP1_combined',
-                                         'both', subjects_dir=subjects_dir)[1:]
+                                         'both', subjects_dir=subjects_dir)
+    # corpus callosum labels
+    aparc_file_lh = os.path.join(subjects_dir,
+                                 'fsaverage', "label",
+                                 'lh.aparc.a2009s.annot')
+    aparc_file_rh = os.path.join(subjects_dir,
+                                 'fsaverage', "label",
+                                 'rh.aparc.a2009s.annot')
+
+    labels_corpus_lh = read_labels_from_annot(subject='fsaverage',
+                                              annot_fname=aparc_file_lh,
+                                              hemi='lh',
+                                              subjects_dir=subjects_dir)
+    labels_corpus_rh = read_labels_from_annot(subject='fsaverage',
+                                              annot_fname=aparc_file_rh,
+                                              hemi='rh',
+                                              subjects_dir=subjects_dir)
+
+    assert labels_corpus_lh[-1].name[:7] == 'Unknown'  # corpus callosum
+    assert labels_corpus_rh[-1].name[:7] == 'Unknown'  # corpus callosum
+    corpus_callosum = [labels_corpus_lh[-1],
+                       labels_corpus_rh[-1]]
+
+    # remove from parcels all the vertices from corpus callosum
+    to_remove = []
+    for idx, parcel in enumerate(parcels):
+        if parcel.hemi == 'lh':
+            cc_free = set(parcel.vertices) - set(corpus_callosum[0].vertices)
+        elif parcel.hemi == 'rh':
+            cc_free = set(parcel.vertices) - set(corpus_callosum[1].vertices)
+        parcel.vertices = np.array(list(cc_free))
+        if len(parcel.vertices) == 0:
+            to_remove.append(idx)
+
     # morph from fsaverage to sample
     parcels = mne.morph_labels(parcels, 'sample', 'fsaverage', subjects_dir,
                                'white')
@@ -132,6 +166,9 @@ def make_dataset_from_sample():
     parcel_indices = parcel_indices[np.where(inuse)[0]]
     assert len(parcel_indices) == lead_field.shape[1]
 
+    lead_field = lead_field[:, parcel_indices != 0]
+    parcel_indices = parcel_indices[parcel_indices != 0]
+
     return X, y, [lead_field], [parcel_indices]
 
 
@@ -185,8 +222,8 @@ rwl10 = ReweightedLasso(alpha_fraction=.01, max_iter=20,
 
 
 @pytest.mark.parametrize('model, hl_max',
-                         [(lasso, 0.02),
-                          #(rwl1, 0),
+                         [#(lasso, 0.02),
+                          (rwl1, 0),
                           #(rwl10, 0.002)
                           ])
 def test_sparse_regressor(model, hl_max):
@@ -217,5 +254,6 @@ def test_sparse_regressor(model, hl_max):
     )
 
     y_pred = sparse_regressor.predict(X)
+    import pdb; pdb.set_trace()
     hl = hamming_loss(y_pred, y)
     assert hl <= hl_max
