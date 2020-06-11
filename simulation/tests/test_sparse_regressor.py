@@ -259,25 +259,11 @@ def test_sparse_regressor(model, hl_max):
                           (rwl10, 0.002)
                           ])
 def test_sparse_regressor_on_sample(make_dataset_from_sample, model, hl_max):
-    n_subjects = 1
-    n_samples_per_subj = 2
-    n_parcels = 10
-    n_sources = 500
-    n_sensors = 100
-    max_true_sources = 1
-    X, y, L, parcel_indices = make_dataset(
-        n_subjects, n_samples_per_subj, n_parcels, n_sources,
-        n_sensors, max_true_sources
-    )
+
     X, y, L, parcel_indices = make_dataset_from_sample
     assert X.shape[0] == y.shape[0]
 
-    assert len(L) == n_subjects == len(parcel_indices)
-    assert np.mean(y.sum(1) == max_true_sources) > 0.9
-
-    sparse_regressor = SparseRegressor(
-        L, parcel_indices, model
-    )
+    sparse_regressor = SparseRegressor(L, parcel_indices, model)
 
     y_pred = sparse_regressor.predict(X)
     hl = hamming_loss(y_pred, y)
