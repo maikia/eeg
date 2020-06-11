@@ -116,9 +116,6 @@ def make_dataset_from_sample():
         evoked = mne.Epochs(raw, events, tmax=0.3).average()
         data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
         signal_list.append(data)
-    # data <=signal_list
-    # names_parcels_selected <= target_list
-    # to_activate <= activated
 
     signal_list = np.array(signal_list)
     data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
@@ -262,9 +259,17 @@ def test_sparse_regressor_on_sample(make_dataset_from_sample, model, hl_max):
 
     X, y, L, parcel_indices = make_dataset_from_sample
     assert X.shape[0] == y.shape[0]
+    assert X[X['subject_id'] == 0].shape[0]  # n_samples_per_subj
+    assert X.shape[0] == y.shape[0]
+    # n_subjects
+    assert len(L) == len(X['subject_id'].unique()) == len(parcel_indices)
+    assert L[0].shape[0] == len(X.columns) - 2  # n_sensors
+    assert L[0].shape[1] == len(parcel_indices[0])  # n_sources
+    assert y.shape[1] == len(np.unique(parcel_indices))  # n_parcels
 
     sparse_regressor = SparseRegressor(L, parcel_indices, model)
 
     y_pred = sparse_regressor.predict(X)
     hl = hamming_loss(y_pred, y)
+    assert np.sum(y_pred) > 0
     assert hl <= hl_max
