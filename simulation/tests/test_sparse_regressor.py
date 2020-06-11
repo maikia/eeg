@@ -1,19 +1,16 @@
 import pytest
 
 import mne
+from mne import read_labels_from_annot
 
 import numpy as np
 import os
 import pandas as pd
 
-
 from sklearn import linear_model
-from sklearn.model_selection import cross_validate, train_test_split
-from sklearn.metrics import hamming_loss, jaccard_score
+from sklearn.metrics import hamming_loss
 
 from simulation.sparse_regressor import SparseRegressor, ReweightedLasso
-
-from mne import read_labels_from_annot
 
 SEED = 42
 
