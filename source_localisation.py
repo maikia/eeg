@@ -182,8 +182,10 @@ def load_data(data_dir):
     X.astype({'subject_id': 'int32'}).dtypes
     y = sparse.load_npz(os.path.join(data_dir, 'target.npz')).toarray()
 
-    # Scale data to avoid tiny numbers
-    X.iloc[:, :-2] /= np.max(X.iloc[:, :-2])
+    # Scale data and L to avoid tiny numbers
+    # X.iloc[:, :-2] /= np.max(X.iloc[:, :-2])
+    L = 1e8 * np.array(L)
+    X.iloc[:, :-2] *= 1e12
     assert y.shape[0] == X.shape[0]
     return X, y, L, parcel_indices_leadfield, signal_type
 
@@ -298,6 +300,7 @@ if __name__ == "__main__":
     print('processing {} ... '.format(data_dir))
 
     X, y, L, parcel_indices, signal_type_data = load_data(data_dir)
+
     assert signal_type == signal_type_data
 
     # define models
@@ -306,8 +309,9 @@ if __name__ == "__main__":
     #                                fit_intercept=False)
 
     # lasso_lars = SparseRegressor(L, parcel_indices, model)  # , data_dir)
-    model = ReweightedLasso(alpha_fraction=.01, max_iter=20,
-                            max_iter_reweighting=20, tol=1e-4)
+    model = ReweightedLasso(alpha_fraction=.8, max_iter=20,
+                            max_iter_reweighting=10, tol=1e-4)
+
     lasso_reweighted = SparseRegressor(L, parcel_indices, model)
 
     # Lead COrrelate
