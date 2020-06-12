@@ -24,25 +24,29 @@ def find_corpus_callosum(subject, subjects_dir, hemi='lh'):
     return labels[-1]
 
 
-# remove those parcels which overlap with corpus callosum
-def remove_overlapping(parcels, xparcel):
-    not_overlapping = []
-    for parcel in parcels:
-        if not np.any(np.isin(parcel.vertices, xparcel.vertices)):
-            not_overlapping.append(parcel)
-    return not_overlapping
-
-
 # we will randomly create a parcellation of n parcels in one hemisphere
 def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                              subject, remove_corpus_callosum=False):
-    parcel = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
-                                 surface='white', random_state=random_state)
+    parcels = random_parcellation(subject, n, hemi, subjects_dir=subjects_dir,
+                                  surface='white', random_state=random_state)
 
     if remove_corpus_callosum:
-        xparcel = find_corpus_callosum(subject, subjects_dir, hemi=hemi)
-        parcel = remove_overlapping(parcel, xparcel)
-    write_labels_to_annot(parcel, subjects_dir=subjects_dir,
+        corpus_callosum = find_corpus_callosum(subject, subjects_dir,
+                                               hemi=hemi)
+
+        # instead of removing all the overlapping parcels we will remove only
+        # the vertices which belong to corpus callosum
+        to_remove = []
+        for idx, parcel in enumerate(parcels):
+            cc_free = set(parcel.vertices) - set(corpus_callosum.vertices)
+            parcel.vertices = np.array(list(cc_free))
+            if len(parcel.vertices) == 0:
+                to_remove.append(idx)
+        # remove all the parcels which after removing corpus callosum now
+        # have 0 indices
+        parcels = [parcels.pop(idc) for idc in to_remove[::-1]]
+
+    write_labels_to_annot(parcels, subjects_dir=subjects_dir,
                           subject=subject,
                           annot_fname=path_annot,
                           overwrite=True)
