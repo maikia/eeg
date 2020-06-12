@@ -44,7 +44,7 @@ def make_random_parcellation(path_annot, n, hemi, subjects_dir, random_state,
                 to_remove.append(idx)
         # remove all the parcels which after removing corpus callosum now
         # have 0 indices
-        parcels = [parcels.pop(idc) for idc in to_remove[::-1]]
+        [parcels.pop(idc) for idc in to_remove[::-1]]
 
     write_labels_to_annot(parcels, subjects_dir=subjects_dir,
                           subject=subject,
