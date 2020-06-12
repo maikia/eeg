@@ -24,6 +24,8 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     fwd = mne.read_forward_solution(fwd_fname)
     src = fwd['src']
 
+    fwd = mne.convert_forward_solution(fwd, force_fixed=True)
+
     # Define the time course of the activity for each source of the region to
     # activate. Here we use a sine wave at 18 Hz with a peak amplitude
     # of 10 nAm.
@@ -57,5 +59,5 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     if signal_type == 'eeg':
         raw.set_eeg_reference(projection=True)
     cov = mne.make_ad_hoc_cov(raw.info)
-    mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
+    # mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
     return events, source_time_series, raw
