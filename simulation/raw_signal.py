@@ -8,12 +8,15 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     # Generate the signal
     info = mne.io.read_info(raw_fname)
     if signal_type == 'eeg':
-        sel = mne.pick_types(info, meg=False, eeg=True, stim=True, exclude=[])
+        sel = mne.pick_types(info, meg=False, eeg=True, stim=False, exclude=[])
     elif signal_type == 'meg':
-        sel = mne.pick_types(info, meg=True, eeg=False, stim=True, exclude=[])
+        sel = mne.pick_types(info, meg=True, eeg=False, stim=False, exclude=[])
     elif signal_type == 'mag' or signal_type == 'grad':
         sel = mne.pick_types(info, meg=signal_type,
-                             eeg=False, stim=True, exclude=[])
+                             eeg=False, stim=False, exclude=[])
+    sel_data = mne.pick_types(info, meg=signal_type, eeg=False, stim=False,
+                              exclude=[])
+    info_data = mne.pick_info(info, sel_data)
     info = mne.pick_info(info, sel)
     tstep = 1. / info['sfreq']
 
@@ -25,7 +28,8 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     src = fwd['src']
 
     fwd = mne.convert_forward_solution(fwd, force_fixed=True)
-
+    fwd = mne.pick_channels_forward(fwd, include=info_data['ch_names'],
+                                    ordered=True)
     # Define the time course of the activity for each source of the region to
     # activate. Here we use a sine wave at 18 Hz with a peak amplitude
     # of 10 nAm.

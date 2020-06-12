@@ -21,8 +21,8 @@ import config
 if os.environ.get('DISPLAY'):
     # display exists
     N_JOBS = 1
-    # NOTE: all the directories should be copied from the server to run the
-    # subjects other than sample (path specs: config.py)
+    # NOTE: all the directories should be made available from the server
+    # to run the subjects other than sample (path specs: config.py)
 else:
     # running on the server, no display
     N_JOBS = -1
@@ -61,6 +61,7 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
                                                 annot_fname=annot_fname_lh,
                                                 hemi='lh',
                                                 subjects_dir=subjects_dir)
+
         cm_lh = find_centers_of_mass(parcels_lh, subjects_dir)
         # remove the last, unknown label which is corpus callosum
         assert parcels_lh[-1].name[:7] == 'unknown'
@@ -177,7 +178,6 @@ def simulate_for_subject(subject, data_path, parcels_subject,
         Returns an array of ones.
 
         """
-
     # Here we are creating the directories/files for left and right hemisphere
     if subject == 'sample':
         raw_fname = os.path.join(data_path, 'MEG', subject,
@@ -225,8 +225,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     assert all([len(i) >= 1 for i in target_list])
 
     # SAVE THE DATA (simulated data and the target: source parcels)
-    signal_list = np.array(signal_list)
-    data_labels = ['e%d' % (idx + 1) for idx in range(signal_list.shape[1])]
+    data_labels = ['e%d' % (idx + 1) for idx in range(len(signal_list[0]))]
     df = pd.DataFrame(signal_list, columns=list(data_labels))
     target = targets_to_sparse(target_list, parcel_names)
 
@@ -287,13 +286,14 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
              lead_field=lead_field, parcel_indices=parcel_indices_l,
              signal_type=signal_type)
+    print('New data was saved in {}'.format(data_dir_specific))
     return data_dir_specific
 
 
 if __name__ == "__main__":
     # same variables
-    n_parcels = 70  # number of parcels per hemisphere
-    # (will be reduced by corpus callosum)
+    n_parcels = 40  # number of parcels per hemisphere
+    # (might be reduced by corpus callosum)
     random_state = 42
     n_samples = 500
     hemi = 'both'
@@ -308,11 +308,12 @@ if __name__ == "__main__":
                                                   n_parcels=n_parcels,
                                                   random_state=random_state)
 
-    subject_names = ['sample', 'CC120008', 'CC110033', 'CC110101',
+    subject_names = ['sample']
+    ''', 'CC120008', 'CC110033', 'CC110101',
                      'CC110187', 'CC110411', 'CC110606', 'CC112141',
                      'CC120049', 'CC120061', 'CC120120', 'CC120182',
                      'CC120264', 'CC120309', 'CC120313', 'CC120319',
-                     'CC120376', 'CC120469', 'CC120550']
+                     'CC120376', 'CC120469', 'CC120550'] '''
 
     data_dir = 'data'
     for subject in subject_names:
@@ -328,6 +329,7 @@ if __name__ == "__main__":
         len_parcels = len(parcels_subject)
         case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
                          + '_' + str(n_parcels_max))
+
         data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
 
         # check if the data directory for the subject already exists
