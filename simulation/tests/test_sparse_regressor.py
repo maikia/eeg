@@ -24,8 +24,8 @@ def make_dataset_from_sample():
                                             verbose=True)
 
     # get parcels and remove corpus callosum
-    parcels = mne.read_labels_from_annot('fsaverage', 'HCPMMP1_combined',
-                                         'both', subjects_dir=subjects_dir)
+    parcels = read_labels_from_annot('fsaverage', 'HCPMMP1_combined',
+                                     'both', subjects_dir=subjects_dir)
     # corpus callosum labels
     aparc_file_lh = os.path.join(subjects_dir,
                                  'fsaverage', "label",
