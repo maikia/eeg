@@ -17,7 +17,7 @@ from sklearn.model_selection import cross_validate, train_test_split
 
 from simulation.lead_correlate import LeadCorrelate
 from simulation.parcels import find_shortest_path_between_hemi
-from simulation.sparse_regressor import SparseRegressor
+from simulation.sparse_regressor import SparseRegressor, ReweightedLasso
 import simulation.metrics as met
 
 if os.environ.get('DISPLAY'):  # display exists
@@ -278,7 +278,7 @@ if __name__ == "__main__":
     calc_learning_rate = True
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_sample_112_1'
+    data_dir = 'data_grad_sample_120_1'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -302,10 +302,13 @@ if __name__ == "__main__":
 
     # define models
     # Lasso lars
-    model = linear_model.LassoLars(max_iter=3, normalize=False,
-                                   fit_intercept=False)
+    # model = linear_model.LassoLars(max_iter=3, normalize=False,
+    #                                fit_intercept=False)
 
-    lasso_lars = SparseRegressor(L, parcel_indices, model)  # , data_dir)
+    # lasso_lars = SparseRegressor(L, parcel_indices, model)  # , data_dir)
+    model = ReweightedLasso(alpha_fraction=.01, max_iter=20,
+                            max_iter_reweighting=20, tol=1e-4)
+    lasso_reweighted = SparseRegressor(L, parcel_indices, model)
 
     # Lead COrrelate
     lc = LeadCorrelate(L, parcel_indices)
@@ -326,7 +329,7 @@ if __name__ == "__main__":
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
-        models = {'lasso lars': lasso_lars}
+        models = {'lasso reweighted': lasso_reweighted}
         # models = {'lead correlate': lc, 'lasso lars': lasso_lars,
         #           'K-neighbours(3)': kneighbours}
         scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
@@ -346,7 +349,7 @@ if __name__ == "__main__":
 
     if True:  # plot_data: # and False:
         # plot parcels
-        display_true_pred_parcels(X, y, data_dir, model=lasso_lars,
+        display_true_pred_parcels(X, y, data_dir, model=lasso_reweighted,
                                   model_name='lasso lars',
                                   n_samples='all')
     if False:
