@@ -58,7 +58,7 @@ def make_dataset_from_sample():
         parcel.vertices = np.array(list(cc_free))
         if len(parcel.vertices) == 0:
             to_remove.append(idx)
-
+    [parcels.pop(idc) for idc in to_remove[::-1]]
     # morph from fsaverage to sample
     parcels = mne.morph_labels(parcels, 'sample', subjects_dir=subjects_dir)
 
