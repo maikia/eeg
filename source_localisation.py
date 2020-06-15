@@ -111,6 +111,7 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # number of samples selected at each run
     if model_name == 'K-neighbours(3)':
         X = X.loc[:, X.columns != 'subject']
+
     X_train, X_test, y_train, y_test = \
         train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -128,8 +129,10 @@ def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
 
         model.fit(X_train.head(n_samples_train), y_train[:n_samples_train])
 
-        score = model.score(X_test.head(n_samples_test),
-                            y_test[:n_samples_test])
+        # score = model.score(X_test.head(n_samples_test),
+        #                     y_test[:n_samples_test])
+        y_pred = model.predict(X_test.head(n_samples_test))
+        score = hamming_loss(y_test[:n_samples_test], y_pred)
         scores_all = scores_all.append({'n_samples_train': n_samples_train,
                                         'score_test': score},
                                        ignore_index=True)
@@ -255,10 +258,10 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
         sub = np.where(diff_parcels == cond[0])[0][0]
         if type(ax) == np.ndarray:
             ax[sub].plot(df.n_samples_train, df.score_test,
-                         label=str(cond[1]) + cond[2])
+                         label=str(cond[1]) + 's: ' + cond[2])
         else:
             ax.plot(df.n_samples_train, df.score_test,
-                    label=str(cond[1]) + cond[2])
+                    label=str(cond[1]) + 's: ' + cond[2])
 
     for idx, parcel in enumerate(diff_parcels):
         if type(ax) == np.ndarray:
@@ -275,12 +278,12 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = False
+    plot_data = True
     calc_scores_for_lc = False
     calc_learning_rate = True
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_sample_120_1'
+    data_dir = 'data_grad_sample_80_3'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -293,7 +296,7 @@ if __name__ == "__main__":
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
-    n_samples_grid = [300]
+    n_samples_grid = [100, 300]
     subject = data_dir.split('_')[-3]
 
     # load data
@@ -305,14 +308,19 @@ if __name__ == "__main__":
 
     # define models
     # Lasso lars
-    # model = linear_model.LassoLars(max_iter=3, normalize=False,
-    #                                fit_intercept=False)
+    model_lars = linear_model.LassoLars(max_iter=3, normalize=False,
+                                        fit_intercept=False)
 
-    # lasso_lars = SparseRegressor(L, parcel_indices, model)  # , data_dir)
-    model = ReweightedLasso(alpha_fraction=.8, max_iter=20,
-                            max_iter_reweighting=10, tol=1e-4)
+    lasso_lars = SparseRegressor(L, parcel_indices, model_lars)  # , data_dir)
 
-    lasso_reweighted = SparseRegressor(L, parcel_indices, model)
+    model_reweighted = ReweightedLasso(alpha_fraction=.8, max_iter=20,
+                                       max_iter_reweighting=10, tol=1e-4)
+    lasso_reweighted = SparseRegressor(L, parcel_indices, model_reweighted)
+
+    model_reweighted_not = ReweightedLasso(alpha_fraction=.01, max_iter=20,
+                                           max_iter_reweighting=1, tol=1e-4)
+    lasso_reweighted_not = SparseRegressor(L, parcel_indices,
+                                           model_reweighted_not)
 
     # Lead COrrelate
     lc = LeadCorrelate(L, parcel_indices)
@@ -333,16 +341,21 @@ if __name__ == "__main__":
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
-        models = {'lasso reweighted': lasso_reweighted}
-        # models = {'lead correlate': lc, 'lasso lars': lasso_lars,
-        #           'K-neighbours(3)': kneighbours}
+        #models = {'lasso reweighted': lasso_reweighted}
+        models = {'K-neighbours(3)': kneighbours,
+                  'lead correlate': lc,
+                  'lasso lars': lasso_lars,
+                  '1 lasso reweighted': lasso_reweighted_not,
+                  '10 lasso reweighted': lasso_reweighted,
+                  'lasso lars': lasso_lars
+                  }
         scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
         scores_all.to_pickle(scores_save_file)
 
         print(scores_all.tail(len(models)))
 
     plot_data = plot_data and visualize_data
-    if plot_data:
+    if False and plot_data:
         # plot sources at the activation
         plot_sources_at_activation(X, y, signal_type)
 
@@ -350,6 +363,7 @@ if __name__ == "__main__":
         # plot scores
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
+        import pdb; pdb.set_trace()
 
     if True:  # plot_data: # and False:
         # plot parcels
