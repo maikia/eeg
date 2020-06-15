@@ -86,15 +86,15 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
 
 # @mem.cache
 def init_signal(parcels, raw_fname, fwd_fname, subject,
-                n_parcels_max=3, random_state=None, signal_type='eeg'
+                n_sources_max=3, random_state=None, signal_type='eeg'
                 ):
     '''
     '''
     # randomly choose how many parcels will be activated between 1 and
-    # n_parcels_max and which index at the parcel
+    # n_sources_max and which index at the parcel
     rng = check_random_state(random_state)
 
-    n_parcels = rng.randint(n_parcels_max, size=1)[0] + 1
+    n_parcels = rng.randint(n_sources_max, size=1)[0] + 1
     to_activate = []
     parcels_selected = []
 
@@ -145,13 +145,13 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
 
 
 def simulate_for_subject(subject, data_path, parcels_subject,
-                         n_samples=2000, n_parcels_max=3, signal_type='grad',
+                         n_samples=2000, n_sources_max=3, signal_type='grad',
                          random_state=42, data_dir_specific='data'):
     """ simulates the data for a given subject. It generates and saves the
     following:
     X.csv: data of the shape n_samples x n_electrodes
     target.npz: sources activated at each sample. the number of sources is
-                [1, n_parcels_max]
+                [1, n_sources_max]
     lead_field.npz: consists of three types of information:
         "lead_field": matrix of shape [n_electrodes x n_vertices],
         "parcel_indices": indicates to which vertices the signal corresponds
@@ -167,8 +167,8 @@ def simulate_for_subject(subject, data_path, parcels_subject,
         given in config.py (raw, and fwd)
     parcels_subject : list of parcels (usually morphed from fsaverage subject)
     n_samples : int, number of samples to be generated
-    n_parcels_max : maximum of parcels activated (sources) in each
-        simulation. The number of sources will be between 1 and n_parcels_max
+    n_sources_max : maximum of parcels activated (sources) in each
+        simulation. The number of sources will be between 1 and n_sources_max
     signal_type : 'string', type of the signal. It can be 'eeg', 'meg', 'mag'
     or 'grad'
 
@@ -216,12 +216,12 @@ def simulate_for_subject(subject, data_path, parcels_subject,
 
     train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
         delayed(init_signal)(parcels_subject, raw_fname, fwd_fname, subject,
-                             n_parcels_max, seed, signal_type)
+                             n_sources_max, seed, signal_type)
         for seed in tqdm(seeds)
     )
     signal_list, target_list, activated = zip(*train_data)
 
-    assert all([len(i) <= n_parcels_max for i in target_list])
+    assert all([len(i) <= n_sources_max for i in target_list])
     assert all([len(i) >= 1 for i in target_list])
 
     # SAVE THE DATA (simulated data and the target: source parcels)
@@ -297,7 +297,7 @@ if __name__ == "__main__":
     random_state = 42
     n_samples = 500
     hemi = 'both'
-    n_parcels_max = 1
+    n_sources_max = 1
     signal_type = 'grad'
     make_new = True  # True if rerun all, even already existing dirs
 
@@ -328,7 +328,7 @@ if __name__ == "__main__":
         # make all the paths
         len_parcels = len(parcels_subject)
         case_specific = (signal_type + '_' + subject + '_' + str(len_parcels)
-                         + '_' + str(n_parcels_max))
+                         + '_' + str(n_sources_max))
 
         data_dir_specific = os.path.join(data_dir, 'data_' + case_specific)
 
@@ -347,6 +347,6 @@ if __name__ == "__main__":
 
         data_dir_specific = simulate_for_subject(
             subject, data_path,
-            parcels_subject, n_parcels_max=n_parcels_max, n_samples=n_samples,
+            parcels_subject, n_sources_max=n_sources_max, n_samples=n_samples,
             random_state=random_state,
             data_dir_specific=data_dir_specific, signal_type=signal_type)

@@ -63,5 +63,5 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     if signal_type == 'eeg':
         raw.set_eeg_reference(projection=True)
     cov = mne.make_ad_hoc_cov(raw.info)
-    # mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
+    mne.simulation.add_noise(raw, cov, iir_filter=[0.2, -0.2, 0.02])
     return events, source_time_series, raw
