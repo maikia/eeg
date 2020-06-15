@@ -122,11 +122,11 @@ class LeadCorrelate(BaseEstimator, ClassifierMixin, TransformerMixin):
         for idx in range(n_samples):
             x = X.iloc[idx]
             subj_idx = int(x['subject_id'])
-            x = x[:-2]  # remove 'subject' from x
+            x = x[:-2]  # remove 'subject' and 'subject_id' from x
             x = x / linalg.norm(x)  # normalize x to take correlations
 
             corr = (pd.DataFrame(np.abs(L[subj_idx].T.dot(x)))
-                   .groupby(parcel_indices[subj_idx]).max().transpose())
+                    .groupby(parcel_indices[subj_idx]).max().transpose())
             if not idx:
                 correlation = corr
             else:
