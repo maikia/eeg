@@ -1,5 +1,5 @@
 import numpy as np
-
+import os
 from simulation.emd import emd_score
 
 
@@ -107,25 +107,48 @@ def calc_froc(y_true, y_score):
 
 
 def emd_score_for_subjects(subjects, y_true, y_pred, data_dir):
-    import pdb; pdb.set_trace()
-    pass
+    """
+    given a list of subjects used in each sample, y_true and y_pred it
+    calculates the emd score for each of the subjects and combines it into
+    a single score. EMD score calculates the distance between the center of
+    mass of the predicted and true parcels. The ideal EMD score is 0.0.
+
+    Parameters
+    ----------
+    subjects : array of string, each element in the list corresponds to each
+        sample and must be given in the correct order, the same as in y_true
+        and y_pred
+    y_true : array, shape = [n_samples x n_classes]
+             target scores: probability estimates of the positive class,
+             confidence values
+    Returns
+    -------
+    ts : array
+    """
+
+    assert len(subjects) == len(y_true) == len(y_pred)
+    assert y_true.shape == y_pred.shape
+    assert os.path.exists(data_dir)
+    unique_subj = np.unique(subjects)
+
+    scores = np.empty(len(unique_subj))
+
+    for idx, subject in enumerate(unique_subj):
+        sbj_idc = np.where(subjects == subject)[0]
+        score = emd_score_subj(y_true[sbj_idc], y_pred[sbj_idc],
+                               data_dir, subject)
+        scores[idx] = score * (len(sbj_idc) / len(subjects))  # normalize
+    score = np.sum(scores)
+    return score
 
 
-def emd_score(y_true, y_pred, data_dir, subject):
-    # subjects = np.unique(X['subject'])
-    scores = np.empty(len(subjects))
-    X_used = X.reset_index(drop=True)
-    #for idx, subject in enumerate(subjects):
-    #subj_idx = X_used[X_used['subject'] == subject].index
-    #    y_subj = y[subj_idx, :]
-    #    y_pred_subj = y_pred[subj_idx, :]
-    labels_x = np.load(os.path.join(self.data_dir,
+def emd_score_subj(y_true, y_pred, data_dir, subject):
+
+    labels_x = np.load(os.path.join(data_dir,
                                     subject + '_labels.npz'),
                        allow_pickle=True)['arr_0']
     score = emd_score(y_true, y_pred, labels_x)
-    scores[idx] = score * (len(y_subj) / len(y))  # normalize
 
-    score = np.sum(scores)
     return score
 
 

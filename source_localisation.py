@@ -287,7 +287,7 @@ if __name__ == "__main__":
     plot_data = True
     calc_scores_for_lc = False
     calc_learning_rate = False
-    save_y_pred = True
+    save_y_pred = False
     score_on_predicted = True
 
     username = os.environ.get('USER')
@@ -388,8 +388,8 @@ if __name__ == "__main__":
             model_pred[name] = y_pred
 
         model_pred['y_true'] = y_test[:n_samples_test]
-        model_pred['subject'] = X_train.head(
-                                    n_samples_train)['subject'].tolist()
+        model_pred['subject'] = X_test.head(
+                                    n_samples_test)['subject'].to_numpy()
         with open(models_pred_file, 'wb') as handle:
             pickle.dump(model_pred, handle)
         print('saved the predictions to {}'.format(models_pred_file))
