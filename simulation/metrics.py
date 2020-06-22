@@ -1,5 +1,7 @@
 import numpy as np
 
+from simulation.emd import emd_score
+
 
 def get_true_false(true_signal, pred_signal):
     # given true and predicted signal 1d array of 0s and 1s
@@ -102,6 +104,29 @@ def calc_froc(y_true, y_score):
     tfp = tfp / n_samples
     ts = ts / n_pos
     return ts, tfp, thresholds[::-1]
+
+
+def emd_score_for_subjects(subjects, y_true, y_pred, data_dir):
+    import pdb; pdb.set_trace()
+    pass
+
+
+def emd_score(y_true, y_pred, data_dir, subject):
+    # subjects = np.unique(X['subject'])
+    scores = np.empty(len(subjects))
+    X_used = X.reset_index(drop=True)
+    #for idx, subject in enumerate(subjects):
+    #subj_idx = X_used[X_used['subject'] == subject].index
+    #    y_subj = y[subj_idx, :]
+    #    y_pred_subj = y_pred[subj_idx, :]
+    labels_x = np.load(os.path.join(self.data_dir,
+                                    subject + '_labels.npz'),
+                       allow_pickle=True)['arr_0']
+    score = emd_score(y_true, y_pred, labels_x)
+    scores[idx] = score * (len(y_subj) / len(y))  # normalize
+
+    score = np.sum(scores)
+    return score
 
 
 def calc_afroc(y_true, y_score):

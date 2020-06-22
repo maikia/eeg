@@ -287,7 +287,7 @@ if __name__ == "__main__":
     plot_data = True
     calc_scores_for_lc = False
     calc_learning_rate = False
-    save_y_pred = False
+    save_y_pred = True
     score_on_predicted = True
 
     username = os.environ.get('USER')
@@ -376,7 +376,6 @@ if __name__ == "__main__":
         for name, model in models.items():
             print('running predictions on {}'.format(name))
             if name == 'K-neighbours(3)':
-                X = X.loc[:, X.columns != 'subject']
                 model.fit(X_train.loc[:, X_train.columns != 'subject'].head(
                           n_samples_train), y_train[:n_samples_train])
                 y_pred = model.predict(X_test.loc[:,
@@ -387,7 +386,10 @@ if __name__ == "__main__":
                           y_train[:n_samples_train])
                 y_pred = model.predict(X_test.head(n_samples_test))
             model_pred[name] = y_pred
-        model_pred['true'] = y_test[:n_samples_test]
+
+        model_pred['y_true'] = y_test[:n_samples_test]
+        model_pred['subject'] = X_train.head(
+                                    n_samples_train)['subject'].tolist()
         with open(models_pred_file, 'wb') as handle:
             pickle.dump(model_pred, handle)
         print('saved the predictions to {}'.format(models_pred_file))
@@ -396,8 +398,13 @@ if __name__ == "__main__":
         if os.path.exists(models_pred_file):
             with open(models_pred_file, 'rb') as handle:
                 model_pred = pickle.load(handle)
-            import pdb; pdb.set_trace()
-            met.froc_score()
+
+            y_true = model_pred['y_true']
+            subjects = model_pred['subject']
+            y_pred = model_pred['1 lasso reweighted']
+            jaccard_score(y_true, y_pred, average='samples')
+            hamming_loss(y_true, y_pred)
+            met.emd_score_for_subjects(subjects, y_true, y_pred, data_dir)
             '''
                'afroc_score': make_scorer(met.afroc_score,
                                           needs_threshold=True),
