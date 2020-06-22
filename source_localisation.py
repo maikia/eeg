@@ -103,6 +103,9 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
         plot_y_pred_true_parcels(subject, idx_lab_pred, idx_lab_true)
 
 
+
+
+
 def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # runs given model with the data
     # with different number of max sources and different number of brain
@@ -231,12 +234,15 @@ def calc_scores_for_model(X, y, model, n_samples=-1):
 
     scores = pd.DataFrame(scores)
     scores[['test_%s' % s for s in scoring]]
+    import pdb; pdb.set_trace()
     print(scores.agg(['mean', 'std']))
     return scores
 
 
 def make_learning_curve_for_all(X, y, models, n_samples_grid):
     # Do learning curve for all models and all datasets
+    # returns data frame with names of the models and the hamming score
+    # calculated on the predictions of this model
     scores_all = []
 
     for name, model in models.items():
@@ -280,10 +286,12 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 if __name__ == "__main__":
     plot_data = True
     calc_scores_for_lc = False
-    calc_learning_rate = True
+    calc_learning_rate = False
+    save_y_predict = True
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_sample_80_3'
+    # data_dir = 'data_grad_sample_80_1'
+    data_dir = 'data_grad_CC120008_80_1'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -338,21 +346,46 @@ if __name__ == "__main__":
             n_samples = -1
         calc_scores_for_model(X, y, model=lc, n_samples=n_samples_grid)
 
+    models = {'K-neighbours(3)': kneighbours,
+              'lead correlate': lc,
+              'lasso lars': lasso_lars,
+              '1 lasso reweighted': lasso_reweighted_not,
+              '10 lasso reweighted': lasso_reweighted,
+              'lasso lars': lasso_lars
+              }
+
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
     if calc_learning_rate:
         # make learning curve for selected models
-        #models = {'lasso reweighted': lasso_reweighted}
-        models = {'K-neighbours(3)': kneighbours,
-                  'lead correlate': lc,
-                  'lasso lars': lasso_lars,
-                  '1 lasso reweighted': lasso_reweighted_not,
-                  '10 lasso reweighted': lasso_reweighted,
-                  'lasso lars': lasso_lars
-                  }
+        # models = {'lasso reweighted': lasso_reweighted}
+
         scores_all = make_learning_curve_for_all(X, y, models, n_samples_grid)
         scores_all.to_pickle(scores_save_file)
 
         print(scores_all.tail(len(models)))
+    if save_y_predict:
+        # split the data
+        model_pred = {}
+        X_train, X_test, y_train, y_test = \
+            train_test_split(X, y, test_size=0.2, random_state=42)
+        n_samples_train = len(X_train)
+        n_samples_test = len(X_test)
+        models_pred_file = os.path.join(data_dir, "models_pred_all.npz")
+        for name, model in models.items():
+            print('running predictions on {}'.format(name))
+            if name == 'K-neighbours(3)':
+                X = X.loc[:, X.columns != 'subject']
+                model.fit(X_train.loc[:, X_train.columns != 'subject'].head(
+                          n_samples_train), y_train[:n_samples_train])
+                y_pred = model.predict(X_test.loc[:,
+                                       X_test.columns != 'subject'].head(
+                                                            n_samples_test))
+            else:
+                model.fit(X_train.head(n_samples_train),
+                          y_train[:n_samples_train])
+                y_pred = model.predict(X_test.head(n_samples_test))
+            model_pred[name] = y_pred
+        model_pred.to_pickle(scores_save_file)
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
