@@ -385,7 +385,8 @@ if __name__ == "__main__":
                           y_train[:n_samples_train])
                 y_pred = model.predict(X_test.head(n_samples_test))
             model_pred[name] = y_pred
-        model_pred.to_pickle(scores_save_file)
+        model_pred['true'] = y_test[:n_samples_test]
+        np.savez(models_pred_file, model_pred)
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
