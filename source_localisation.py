@@ -3,6 +3,7 @@ import glob
 
 import numpy as np
 import pandas as pd
+import pickle
 import matplotlib.pyplot as plt
 
 from scipy import sparse
@@ -234,7 +235,6 @@ def calc_scores_for_model(X, y, model, n_samples=-1):
 
     scores = pd.DataFrame(scores)
     scores[['test_%s' % s for s in scoring]]
-    import pdb; pdb.set_trace()
     print(scores.agg(['mean', 'std']))
     return scores
 
@@ -287,7 +287,8 @@ if __name__ == "__main__":
     plot_data = True
     calc_scores_for_lc = False
     calc_learning_rate = False
-    save_y_predict = True
+    save_y_pred = False
+    score_on_predicted = True
 
     username = os.environ.get('USER')
     # data_dir = 'data_grad_sample_80_1'
@@ -363,14 +364,15 @@ if __name__ == "__main__":
         scores_all.to_pickle(scores_save_file)
 
         print(scores_all.tail(len(models)))
-    if save_y_predict:
+
+    models_pred_file = os.path.join(data_dir, "models_pred_all.pkl")
+    if save_y_pred:
         # split the data
         model_pred = {}
         X_train, X_test, y_train, y_test = \
             train_test_split(X, y, test_size=0.2, random_state=42)
         n_samples_train = len(X_train)
         n_samples_test = len(X_test)
-        models_pred_file = os.path.join(data_dir, "models_pred_all.npz")
         for name, model in models.items():
             print('running predictions on {}'.format(name))
             if name == 'K-neighbours(3)':
@@ -386,7 +388,29 @@ if __name__ == "__main__":
                 y_pred = model.predict(X_test.head(n_samples_test))
             model_pred[name] = y_pred
         model_pred['true'] = y_test[:n_samples_test]
-        np.savez(models_pred_file, model_pred)
+        with open(models_pred_file, 'wb') as handle:
+            pickle.dump(model_pred, handle)
+        print('saved the predictions to {}'.format(models_pred_file))
+
+    if score_on_predicted:
+        if os.path.exists(models_pred_file):
+            with open(models_pred_file, 'rb') as handle:
+                model_pred = pickle.load(handle)
+            import pdb; pdb.set_trace()
+            met.froc_score()
+            '''
+               'afroc_score': make_scorer(met.afroc_score,
+                                          needs_threshold=True),
+               'jaccard': make_scorer(jaccard_score,
+                                      average='samples'),
+               'hamming': make_scorer(hamming_loss,
+                                      greater_is_better=False)}
+            '''
+            # scores = 
+            import pdb; pdb.set_trace()
+        else:
+            print('You need to run predictions first (set `save_y_predict`'
+                  'to True')
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
