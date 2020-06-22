@@ -106,7 +106,7 @@ def calc_froc(y_true, y_score):
     return ts, tfp, thresholds[::-1]
 
 
-def emd_score_for_subjects(subjects, y_true, y_pred, data_dir):
+def emd_score_subjects(subjects, y_true, y_pred, data_dir):
     """
     given a list of subjects used in each sample, y_true and y_pred it
     calculates the emd score for each of the subjects and combines it into

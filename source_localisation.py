@@ -104,9 +104,6 @@ def display_true_pred_parcels(X, y, data_dir, model, model_name='',
         plot_y_pred_true_parcels(subject, idx_lab_pred, idx_lab_true)
 
 
-
-
-
 def learning_curve(X, y, model=None, model_name='', n_samples_grid='auto'):
     # runs given model with the data
     # with different number of max sources and different number of brain
@@ -287,12 +284,12 @@ if __name__ == "__main__":
     plot_data = True
     calc_scores_for_lc = False
     calc_learning_rate = False
-    save_y_pred = False
+    save_y_pred = True
     score_on_predicted = True
 
     username = os.environ.get('USER')
-    # data_dir = 'data_grad_sample_80_1'
-    data_dir = 'data_grad_CC120008_80_1'
+    data_dir = 'data_grad_sample_80_2'
+    # data_dir = 'data_grad_CC120008_80_1'
 
     if "mtelen" in username or 'maja' in username:
         data_dir_base = 'data'
@@ -395,29 +392,30 @@ if __name__ == "__main__":
         print('saved the predictions to {}'.format(models_pred_file))
 
     if score_on_predicted:
-        if os.path.exists(models_pred_file):
+        try:
             with open(models_pred_file, 'rb') as handle:
                 model_pred = pickle.load(handle)
+        except FileNotFoundError:
+            print('{} cannot be found; try setting `save_y_predict` to True'
+                  .format(models_pred_file))
 
-            y_true = model_pred['y_true']
-            subjects = model_pred['subject']
-            y_pred = model_pred['1 lasso reweighted']
-            jaccard_score(y_true, y_pred, average='samples')
-            hamming_loss(y_true, y_pred)
-            met.emd_score_for_subjects(subjects, y_true, y_pred, data_dir)
-            '''
-               'afroc_score': make_scorer(met.afroc_score,
-                                          needs_threshold=True),
-               'jaccard': make_scorer(jaccard_score,
-                                      average='samples'),
-               'hamming': make_scorer(hamming_loss,
-                                      greater_is_better=False)}
-            '''
-            # scores = 
-            import pdb; pdb.set_trace()
-        else:
-            print('You need to run predictions first (set `save_y_predict`'
-                  'to True')
+        models_score = {}
+        y_true = model_pred.pop('y_true')
+        subjects = model_pred.pop('subject')
+
+        for model_name in model_pred.keys():
+            models_score[model_name] = {}
+
+            y_pred = model_pred[model_name]
+            models_score[model_name]['jaccard_score'] = jaccard_score(
+                y_true, y_pred, average='samples')
+            models_score[model_name]['hamming_loss'] = hamming_loss(
+                y_true, y_pred)
+            models_score[model_name]['emd'] = met.emd_score_subjects(
+                subjects, y_true, y_pred, data_dir)
+
+        models_score = pd.DataFrame(models_score)
+        models_score.to_csv(os.path.join(data_dir, 'score_per_model.csv'))
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
@@ -428,7 +426,6 @@ if __name__ == "__main__":
         # plot scores
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
-        import pdb; pdb.set_trace()
 
     if True:  # plot_data: # and False:
         # plot parcels
