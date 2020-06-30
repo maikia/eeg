@@ -64,6 +64,15 @@ def display_distances_on_brain(data_dir, subject='CC110033'):
     plot_distance(subject, data_dir, labels_x)
 
 
+def plot_all_parcels(data_dir, subject):
+    labels_x = np.load(os.path.join(data_dir,
+                                    subject + '_labels.npz'),
+                       allow_pickle=True)
+
+    labels_x = labels_x['arr_0']
+    plot_y_pred_true_parcels(subject, labels_x, [])
+
+
 def display_true_pred_parcels(X, y, data_dir, model, model_name='',
                               n_samples='all'):
     # draw a brain with y_pred in red and y_test in green
@@ -281,14 +290,15 @@ def plot_scores(scores_all, file_name='learning_curves', ext='.png'):
 
 
 if __name__ == "__main__":
-    plot_data = True
+    plot_data = False
     calc_scores_for_lc = False
     calc_learning_rate = False
-    save_y_pred = True
-    score_on_predicted = True
+    save_y_pred = False
+    score_on_predicted = False
+    plot_parcels = False
 
     username = os.environ.get('USER')
-    data_dir = 'data_grad_sample_80_2'
+    data_dir = 'data_grad_sample_450_3'
     # data_dir = 'data_grad_CC120008_80_1'
 
     if "mtelen" in username or 'maja' in username:
@@ -302,7 +312,7 @@ if __name__ == "__main__":
     signal_type = 'grad'
 
     # n_samples_grid = 'auto'
-    n_samples_grid = [100, 300]
+    n_samples_grid = [300]
     subject = data_dir.split('_')[-3]
 
     # load data
@@ -349,7 +359,6 @@ if __name__ == "__main__":
               'lasso lars': lasso_lars,
               '1 lasso reweighted': lasso_reweighted_not,
               '10 lasso reweighted': lasso_reweighted,
-              'lasso lars': lasso_lars
               }
 
     scores_save_file = os.path.join(data_dir, "scores_all.pkl")
@@ -415,7 +424,51 @@ if __name__ == "__main__":
                 subjects, y_true, y_pred, data_dir)
 
         models_score = pd.DataFrame(models_score)
+        print(models_score)
         models_score.to_csv(os.path.join(data_dir, 'score_per_model.csv'))
+
+    plot_predicted_score = True
+    if plot_predicted_score:
+        test_dataset = 'data_grad_sample_450'
+        data_dirs = [data_dir for data_dir in os.listdir(data_dir_base) if
+                     data_dir.startswith(test_dataset)]
+        data_dirs.sort()
+        pad = 5
+        import matplotlib.pylab as plt
+        n_s = []
+        for idx, data_dir in enumerate(data_dirs):
+            score_file = os.path.join(data_dir_base, data_dir,
+                                      'score_per_model.csv')
+            if not os.path.exists(score_file):
+                print('You need to calculate score to use {score_file}')
+                break
+
+            scores = pd.read_csv(score_file, index_col=0)
+            n_sources = int(data_dir.split('_')[-1])
+            n_s.append(n_sources)
+
+            if idx == 0:
+                score_types = scores.index
+                fig, axes = plt.subplots(nrows=len(data_dirs),
+                                         ncols=len(score_types),
+                                         figsize=(12, 8))
+                for ax, score_type in zip(axes[0], score_types):
+                    ax.annotate(score_type, xy=(0.5, 1), xytext=(0, pad),
+                    xycoords='axes fraction', textcoords='offset points',
+                    size='large', ha='center', va='baseline')
+
+        for ax, n_source in zip(axes[:,0], n_s):
+            txt = 'max ' + str(n_source) + '\n sources'
+            ax.annotate(txt, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad-pad,0),
+            xycoords=ax.yaxis.label, textcoords='offset points',
+            size='large', ha='right', va='center')
+            #    score_types
+                #for idx_s, score_type in enumerate(score_types):
+                #    plt.subplot(len(data_dirs), len(score_types), idx_s+1)
+                #    plt.title(score_type)
+            #plt.subplot(len(data_dirs), len(score_types),
+            #            idx*len(score_types)+1)
+        import pdb; pdb.set_trace()
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
@@ -427,10 +480,14 @@ if __name__ == "__main__":
         scores_all = pd.read_pickle(scores_save_file)
         plot_scores(scores_all, file_name='learning_curves', ext='.png')
 
-    if True:  # plot_data: # and False:
+    if False:  # plot_data: # and False:
         # plot parcels
         display_true_pred_parcels(X, y, data_dir, model=lasso_reweighted,
                                   model_name='lasso lars',
                                   n_samples='all')
     if False:
         display_distances_on_brain(data_dir, subject='sample')
+
+    plot_parcels = False
+    if plot_parcels:
+        plot_all_parcels(data_dir, 'sample')
