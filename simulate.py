@@ -62,10 +62,10 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
                                                 hemi='lh',
                                                 subjects_dir=subjects_dir)
 
-        cm_lh = find_centers_of_mass(parcels_lh, subjects_dir)
         # remove the last, unknown label which is corpus callosum
         assert parcels_lh[-1].name[:7] == 'unknown'
         parcels_lh = parcels_lh[:-1]
+        cm_lh = find_centers_of_mass(parcels_lh, subjects_dir)
     if ((hemi == 'both') or (hemi == 'rh')):
         parcels_rh = mne.read_labels_from_annot(subject=subject,
                                                 annot_fname=annot_fname_rh,
@@ -140,6 +140,7 @@ def make_parcels_on_fsaverage(subjects_dir, n_parcels=20, hemi='both',
     parcels, cms = prepare_parcels('fsaverage', subjects_dir, hemi=hemi,
                                    n_parcels=n_parcels,
                                    random_state=random_state)
+
     parcels_flat = [item for sublist in parcels for item in sublist]
     return parcels_flat
 
@@ -273,7 +274,6 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     inuse = np.concatenate((fwd['src'][0]['inuse'],
                             fwd['src'][1]['inuse']), axis=0)
     parcel_indices_l = parcel_indices[np.where(inuse)[0]]
-
     assert len(parcel_indices_l) == lead_field.shape[1]
 
     # CLEAN UP AND SAVE LF
@@ -281,8 +281,9 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     # (not used by our brain)
     lead_field = lead_field[:, parcel_indices_l != 0]
     parcel_indices_l = parcel_indices_l[parcel_indices_l != 0]
-    assert len(parcel_indices_l) == lead_field.shape[1]
 
+    assert len(parcel_indices_l) == lead_field.shape[1]
+    assert len(np.unique(parcel_indices_l)) == len(parcels_subject)
     np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
              lead_field=lead_field, parcel_indices=parcel_indices_l,
              signal_type=signal_type)
@@ -292,8 +293,10 @@ def simulate_for_subject(subject, data_path, parcels_subject,
 
 if __name__ == "__main__":
     # same variables
-    n_parcels = 40  # number of parcels per hemisphere
-    # (might be reduced by corpus callosum)
+    random_parcels = False
+    if random_parcels:
+        n_parcels = 80  # number of parcels per hemisphere
+        # (might be reduced by corpus callosum)
     random_state = 42
     n_samples = 500
     hemi = 'both'
@@ -304,16 +307,22 @@ if __name__ == "__main__":
     data_path = config.get_data_path()
 
     sample_subjects_dir = config.get_subjects_dir_subj("sample")
-    parcels_fsaverage = make_parcels_on_fsaverage(sample_subjects_dir,
-                                                  n_parcels=n_parcels,
-                                                  random_state=random_state)
+    if random_parcels:
+        parcels_fsaverage = make_parcels_on_fsaverage(
+            sample_subjects_dir, n_parcels=n_parcels, random_state=random_state
+            )
+    else:
+        parcels_fsaverage = mne.datasets.fetch_aparc_sub_parcellation(
+            subjects_dir=sample_subjects_dir, verbose=True)
+        parcels_fsaverage = mne.read_labels_from_annot(
+            'fsaverage', 'aparc_sub', 'both', subjects_dir=sample_subjects_dir)
 
     subject_names = ['sample']
-    ''', 'CC120008', 'CC110033', 'CC110101',
-                     'CC110187', 'CC110411', 'CC110606', 'CC112141',
-                     'CC120049', 'CC120061', 'CC120120', 'CC120182',
-                     'CC120264', 'CC120309', 'CC120313', 'CC120319',
-                     'CC120376', 'CC120469', 'CC120550'] '''
+    # 'CC120008', 'CC110033', 'CC110101',
+    # 'CC110187', 'CC110411', 'CC110606', 'CC112141',
+    # 'CC120049', 'CC120061', 'CC120120', 'CC120182',
+    # 'CC120264', 'CC120309', 'CC120313', 'CC120319',
+    # 'CC120376', 'CC120469', 'CC120550']
 
     data_dir = 'data'
     for subject in subject_names:
