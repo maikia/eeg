@@ -83,6 +83,51 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
     elif hemi == 'lh':
         return [parcels_lh], [cm_lh]
 
+def get_ready_parcels(subjects_dir, parcels='aparc_sub'):
+    """ it fetches the parcels (from both hemispheres) and removes from them
+    all the vertices overalapping with corpus callosum"""
+
+    mne.datasets.fetch_aparc_sub_parcellation(
+        subjects_dir=subjects_dir, verbose=True)
+    parcels = mne.read_labels_from_annot(
+            'fsaverage', parcels, 'both', subjects_dir=subjects_dir)
+
+     # corpus callosum labels
+    aparc_file_lh = os.path.join(subjects_dir,
+                                 'fsaverage', "label",
+                                 'lh.aparc.a2009s.annot')
+    aparc_file_rh = os.path.join(subjects_dir,
+                                 'fsaverage', "label",
+                                 'rh.aparc.a2009s.annot')
+
+    labels_corpus_lh = mne.read_labels_from_annot(subject='fsaverage',
+                                                  annot_fname=aparc_file_lh,
+                                                  hemi='lh',
+                                                  subjects_dir=subjects_dir)
+    labels_corpus_rh = mne.read_labels_from_annot(subject='fsaverage',
+                                                  annot_fname=aparc_file_rh,
+                                                  hemi='rh',
+                                                  subjects_dir=subjects_dir)
+
+    assert labels_corpus_lh[-1].name[:7] == 'Unknown'  # corpus callosum
+    assert labels_corpus_rh[-1].name[:7] == 'Unknown'  # corpus callosum
+    corpus_callosum = [labels_corpus_lh[-1],
+                       labels_corpus_rh[-1]]
+
+    # remove from parcels all the vertices from corpus callosum
+    to_remove = []
+    for idx, parcel in enumerate(parcels):
+        if parcel.hemi == 'lh':
+            cc_free = set(parcel.vertices) - set(corpus_callosum[0].vertices)
+        elif parcel.hemi == 'rh':
+            cc_free = set(parcel.vertices) - set(corpus_callosum[1].vertices)
+        parcel.vertices = np.array(list(cc_free))
+        if len(parcel.vertices) == 0:
+            to_remove.append(idx)
+    [parcels.pop(idc) for idc in to_remove[::-1]]
+
+    return parcels
+
 
 # @mem.cache
 def init_signal(parcels, raw_fname, fwd_fname, subject,
@@ -296,6 +341,7 @@ if __name__ == "__main__":
     random_parcels = False
     if random_parcels:
         n_parcels = 80  # number of parcels per hemisphere
+        # (only if random parcels)
         # (might be reduced by corpus callosum)
     random_state = 42
     n_samples = 500
@@ -312,10 +358,11 @@ if __name__ == "__main__":
             sample_subjects_dir, n_parcels=n_parcels, random_state=random_state
             )
     else:
-        parcels_fsaverage = mne.datasets.fetch_aparc_sub_parcellation(
-            subjects_dir=sample_subjects_dir, verbose=True)
-        parcels_fsaverage = mne.read_labels_from_annot(
-            'fsaverage', 'aparc_sub', 'both', subjects_dir=sample_subjects_dir)
+        # aparc_sub type of parcesl will be used. All the vertices overlapping
+        # with corpus callosum will be removed
+        parcels_fsaverage = get_ready_parcels(
+            sample_subjects_dir, 'aparc_sub', hemi
+        )
 
     subject_names = ['sample']
     # 'CC120008', 'CC110033', 'CC110101',
