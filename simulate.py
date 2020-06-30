@@ -83,6 +83,7 @@ def prepare_parcels(subject, subjects_dir, hemi, n_parcels, random_state):
     elif hemi == 'lh':
         return [parcels_lh], [cm_lh]
 
+
 def get_ready_parcels(subjects_dir, parcels='aparc_sub'):
     """ it fetches the parcels (from both hemispheres) and removes from them
     all the vertices overalapping with corpus callosum"""
@@ -92,7 +93,7 @@ def get_ready_parcels(subjects_dir, parcels='aparc_sub'):
     parcels = mne.read_labels_from_annot(
             'fsaverage', parcels, 'both', subjects_dir=subjects_dir)
 
-     # corpus callosum labels
+    # corpus callosum labels
     aparc_file_lh = os.path.join(subjects_dir,
                                  'fsaverage', "label",
                                  'lh.aparc.a2009s.annot')
@@ -338,6 +339,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
 
 if __name__ == "__main__":
     # same variables
+    # if set to true 'aparc_sub' will be used (450 parcels)
     random_parcels = False
     if random_parcels:
         n_parcels = 80  # number of parcels per hemisphere
@@ -360,9 +362,7 @@ if __name__ == "__main__":
     else:
         # aparc_sub type of parcesl will be used. All the vertices overlapping
         # with corpus callosum will be removed
-        parcels_fsaverage = get_ready_parcels(
-            sample_subjects_dir, 'aparc_sub', hemi
-        )
+        parcels_fsaverage = get_ready_parcels(sample_subjects_dir, 'aparc_sub')
 
     subject_names = ['sample']
     # 'CC120008', 'CC110033', 'CC110101',
