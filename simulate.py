@@ -374,7 +374,6 @@ if __name__ == "__main__":
 
     data_dir = 'data'
     for subject in subject_names:
-        # TODO: parallel works only for a single subject, then hangs, repair
         subjects_dir = config.get_subjects_dir_subj(subject)
 
         # morph fsaverage labels to the subject we are using
