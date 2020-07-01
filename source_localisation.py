@@ -434,9 +434,10 @@ if __name__ == "__main__":
                      data_dir.startswith(test_dataset)]
         data_dirs.sort()
         pad = 5
-        import matplotlib.pylab as plt
-        n_s = []
+
+        n_s, all_scores = [], []
         # prepare the axes
+        # read the score data
         for idx, data_dir in enumerate(data_dirs):
             score_file = os.path.join(data_dir_base, data_dir,
                                       'score_per_model.csv')
@@ -447,42 +448,53 @@ if __name__ == "__main__":
             scores = pd.read_csv(score_file, index_col=0)
             n_sources = int(data_dir.split('_')[-1])
             n_s.append(n_sources)
+            all_scores.append(scores)
 
-            if idx == 0:
-                score_types = scores.index
-                fig, axes = plt.subplots(nrows=len(data_dirs),
-                                         ncols=len(score_types),
-                                         figsize=(12, 10))
-                for ax, score_type in zip(axes[0], score_types):
-                    ax.annotate(score_type, xy=(0.5, 1), xytext=(0, pad),
-                    xycoords='axes fraction', textcoords='offset points',
-                    size='large', ha='center', va='baseline')
+        # assuming all the data files has the same scores calculated
+        score_types = all_scores[0].index
 
-        for ax, n_source in zip(axes[:,0], n_s):
+        fig, axes = plt.subplots(nrows=len(data_dirs),
+                                 ncols=len(score_types),
+                                 figsize=(12, 10), sharey='col')
+        for ax, score_type in zip(axes[0], score_types):
+            ax.annotate(score_type, xy=(0.5, 1), xytext=(0, pad),
+                        xycoords='axes fraction', textcoords='offset points',
+                        size='large', ha='center', va='baseline')
+
+        for ax, n_source in zip(axes[:, 0], n_s):
             txt = 'max ' + str(n_source) + '\n sources'
-            ax.annotate(txt, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad-pad,0),
-            xycoords=ax.yaxis.label, textcoords='offset points',
-            size='large', ha='right', va='center')
-            #    score_types
-                #for idx_s, score_type in enumerate(score_types):
-                #    plt.subplot(len(data_dirs), len(score_types), idx_s+1)
-                #    plt.title(score_type)
-            #plt.subplot(len(data_dirs), len(score_types),
-            #            idx*len(score_types)+1)
+            ax.annotate(txt, xy=(0, 0.5), xytext=(-ax.yaxis.labelpad-pad, 0),
+                        xycoords=ax.yaxis.label, textcoords='offset points',
+                        size='large', ha='right', va='center')
 
         ticks = np.arange(len(scores.columns)) + 1
-        for ax in axes[-1,:]:
+        for ax in axes[-1, :]:
             ax.set_xticks(ticks)
             ax.set_xticklabels(scores.columns, minor=False, rotation=45,
                                ha='right')
 
-        for axs in axes[:-1,:]:
+        for axs in axes[:-1, :]:
             [ax.set_xticks(ticks) for ax in axs]
             [ax.set_xticklabels('', minor=False) for ax in axs]
 
+        for idx, axs in enumerate(axes):
+            for ax, score_type in zip(axs, all_scores[idx].index):
+                ax_data = all_scores[idx].loc[score_type, :]
+                ax.plot(ticks, ax_data, 'ok', ms=6)
+                [ax.text(tick, ax_data, str(score), color='0.5')
+                    for tick, ax_data, score in zip(
+                        ticks, ax_data, np.round(ax_data.to_numpy(), 3))]
+                # Hide the right and top spines
+                ax.spines['right'].set_visible(False)
+                ax.spines['top'].set_visible(False)
 
+                # Only show ticks on the left and bottom spines
+                ax.yaxis.set_ticks_position('left')
+                ax.xaxis.set_ticks_position('bottom')
         plt.tight_layout()
-        import pdb; pdb.set_trace()
+        fig_name = f'figs/{test_dataset}_score.png'
+        plt.savefig(fig_name)
+        print(f'figure was saved in {fig_name}')
 
     plot_data = plot_data and visualize_data
     if False and plot_data:
