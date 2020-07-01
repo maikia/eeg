@@ -436,6 +436,7 @@ if __name__ == "__main__":
         pad = 5
         import matplotlib.pylab as plt
         n_s = []
+        # prepare the axes
         for idx, data_dir in enumerate(data_dirs):
             score_file = os.path.join(data_dir_base, data_dir,
                                       'score_per_model.csv')
@@ -451,7 +452,7 @@ if __name__ == "__main__":
                 score_types = scores.index
                 fig, axes = plt.subplots(nrows=len(data_dirs),
                                          ncols=len(score_types),
-                                         figsize=(12, 8))
+                                         figsize=(12, 10))
                 for ax, score_type in zip(axes[0], score_types):
                     ax.annotate(score_type, xy=(0.5, 1), xytext=(0, pad),
                     xycoords='axes fraction', textcoords='offset points',
@@ -468,6 +469,19 @@ if __name__ == "__main__":
                 #    plt.title(score_type)
             #plt.subplot(len(data_dirs), len(score_types),
             #            idx*len(score_types)+1)
+
+        ticks = np.arange(len(scores.columns)) + 1
+        for ax in axes[-1,:]:
+            ax.set_xticks(ticks)
+            ax.set_xticklabels(scores.columns, minor=False, rotation=45,
+                               ha='right')
+
+        for axs in axes[:-1,:]:
+            [ax.set_xticks(ticks) for ax in axs]
+            [ax.set_xticklabels('', minor=False) for ax in axs]
+
+
+        plt.tight_layout()
         import pdb; pdb.set_trace()
 
     plot_data = plot_data and visualize_data
