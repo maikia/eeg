@@ -236,6 +236,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
         fwd_fname = config.get_fwd_fname(subject)
 
     assert os.path.exists(raw_fname)
+    print(fwd_fname)
     assert os.path.exists(fwd_fname)
 
     # PREPARE PARCELS
@@ -261,7 +262,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     rng = np.random.RandomState(random_state)
     seeds = rng.randint(np.iinfo('int32').max, size=n_samples)
 
-    train_data = Parallel(n_jobs=N_JOBS, backend='multiprocessing')(
+    train_data = Parallel(n_jobs=N_JOBS)(
         delayed(init_signal)(parcels_subject, raw_fname, fwd_fname, subject,
                              n_sources_max, seed, signal_type)
         for seed in tqdm(seeds)
@@ -364,12 +365,12 @@ if __name__ == "__main__":
         # with corpus callosum will be removed
         parcels_fsaverage = get_ready_parcels(sample_subjects_dir, 'aparc_sub')
 
-    subject_names = ['sample']
-    # 'CC120008', 'CC110033', 'CC110101',
-    # 'CC110187', 'CC110411', 'CC110606', 'CC112141',
-    # 'CC120049', 'CC120061', 'CC120120', 'CC120182',
-    # 'CC120264', 'CC120309', 'CC120313', 'CC120319',
-    # 'CC120376', 'CC120469', 'CC120550']
+    subject_names = ['CC120008', 'CC110033', 'CC110101', 'CC110187',
+                     'CC110411', 'CC110606', 'CC112141', 'CC120049',
+                     'CC120061', 'CC120120', 'CC120182', 'CC120264',
+                     'CC120309', 'CC120313', 'CC120319', 'CC120376',
+                     'CC120469', 'CC120550', 'CC120218', 'CC120166']
+    # 'sample'
 
     data_dir = 'data'
     for subject in subject_names:
