@@ -19,7 +19,6 @@ def solver_lasso(Xw, y, alpha, max_iter):
     return model.fit(Xw, y).coef_.copy()
 
 
-
 class ReweightedLasso(BaseEstimator, RegressorMixin):
     """ Reweighted Lasso estimator with L1 regularizer.
 
@@ -57,7 +56,6 @@ class ReweightedLasso(BaseEstimator, RegressorMixin):
         self.tol = tol
 
     def fit(self, X, y):
-        n_tasks = len(X)
         n_samples, n_features = X.shape
 
         self.coef_ = np.zeros(n_features)
