@@ -132,5 +132,3 @@ if divide_to_4:
                   subj_id_init=subject_id_start+n_files*3)
 else:
     save_the_data(data_dir_all, data_dirs, subj_id_init=subject_id_start)
-
-
