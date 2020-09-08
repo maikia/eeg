@@ -12,7 +12,7 @@ subjects = 'all'
 signal_type = 'grad'
 n_parcels_max = 3
 no_parcels = 450
-data_dir_base = 'data/challenge'
+data_dir_base = 'data/'
 subject_id_start = 1  # assign a number from which first subject_id will start
 divide_to_4 = True  # if true it will divide the data to
 # private/public/test/train; equal number in each

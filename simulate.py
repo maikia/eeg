@@ -25,7 +25,11 @@ if os.environ.get('DISPLAY'):
     # to run the subjects other than sample (path specs: config.py)
 else:
     # running on the server, no display
-    N_JOBS = -1
+    N_JOBS = joblib.cpu_count()
+
+
+# Do not use more than 10 cores
+N_JOBS = min(10, N_JOBS)
 
 # IMPORTANT: run it with ipython --gui=qt
 
@@ -223,8 +227,7 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     -------
     data_dir : string, path to the data
         Returns an array of ones.
-
-        """
+    """
     # Here we are creating the directories/files for left and right hemisphere
     if subject == 'sample':
         raw_fname = os.path.join(data_path, 'MEG', subject,
@@ -349,7 +352,7 @@ if __name__ == "__main__":
     random_state = 42
     n_samples = 500
     hemi = 'both'
-    n_sources_max = 1
+    n_sources_max = 3
     signal_type = 'grad'
     make_new = True  # True if rerun all, even already existing dirs
 
