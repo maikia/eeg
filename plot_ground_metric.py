@@ -28,9 +28,11 @@ for ii, label_i in enumerate(labels):
     distances[v_i] = ground_metric[0][ii]
 
 f = mlab.figure(size=(700, 600))
-brain = Brain(subject, hemi, "white", subjects_dir=subjects_dir, figure=f,
+brain = Brain(subject, hemi, "inflated", subjects_dir=subjects_dir, figure=f,
               background="white", foreground='black')
 vertices = np.arange(642)
+brain.add_annotation('aparc_sub', alpha=0.2)
 brain.add_data(distances, vertices=vertices,
-               hemi="lh", transparent=True, smoothing_steps=2,
-               colormap="RdBu", alpha=1, mid=12)
+               hemi="lh", transparent=True, smoothing_steps=5,
+               colormap="hot", alpha=0.95, mid=40)
+brain.save_image("data/ground_metric.png")
