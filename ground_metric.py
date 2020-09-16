@@ -7,6 +7,7 @@ from numba import njit
 
 from ot import emd2
 
+from config import get_subjects_dir
 
 def mesh_all_distances(points, tris):
     """Compute all pairwise distances on the mesh based on edges lengths
@@ -73,7 +74,7 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
 
 
 if __name__ == "__main__":
-    subjects_dir = "~/MNE_data/MNE-Sample-data/subjects"
+    subjects_dir = get_subjects_dir()
     subjects_dir = os.path.expanduser(subjects_dir)
     grade = 3
     annot = "aparc.a2009s"
