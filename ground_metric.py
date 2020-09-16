@@ -9,6 +9,7 @@ from ot import emd2
 
 from config import get_subjects_dir
 
+
 def mesh_all_distances(points, tris):
     """Compute all pairwise distances on the mesh based on edges lengths
     using Floyd-Warshall algorithm
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     subjects_dir = os.path.expanduser(subjects_dir)
     grade = 3
     annot = "aparc_sub"
-    ground_metric = compute_ground_metric("fsaverage",
+    ground_metric = compute_ground_metric('CC120008',  # "fsaverage",
                                           subjects_dir=subjects_dir,
                                           annot=annot,
                                           grade=grade)
