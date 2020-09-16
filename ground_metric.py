@@ -77,7 +77,7 @@ if __name__ == "__main__":
     subjects_dir = get_subjects_dir()
     subjects_dir = os.path.expanduser(subjects_dir)
     grade = 3
-    annot = "aparc.a2009s"
+    annot = "aparc_sub"
     ground_metric = compute_ground_metric("fsaverage",
                                           subjects_dir=subjects_dir,
                                           annot=annot,
