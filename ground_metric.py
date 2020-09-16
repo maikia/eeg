@@ -4,10 +4,11 @@ import numpy as np
 import mne
 
 from numba import njit
+import time
 
 from ot import emd2
 
-from config import get_subjects_dir
+import config as config
 
 
 def mesh_all_distances(points, tris):
@@ -54,8 +55,15 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
     points = src[0]["rr"][vertno]
     D = mesh_all_distances(points, tris)
     n_vertices = len(vertno)
-    labels = mne.read_labels_from_annot(subject, annot,
+
+    mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
+                                              verbose=True)
+    labels = mne.read_labels_from_annot(subject, annot, 'both',
                                         subjects_dir=subjects_dir)
+
+    mne.utils.set_config("SUBJECTS_DIR",
+                         config.get_subjects_dir(),
+                         set_env=True)
     labels = [label.morph(subject_to=subject, subject_from=subject,
                           grade=grade) for label in labels]
     n_parcels = len(labels)
@@ -75,12 +83,17 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
 
 
 if __name__ == "__main__":
-    subjects_dir = get_subjects_dir()
+    start_time = time.time()
+    subjects_dir = config.get_subjects_dir()
+    sample_subjects_dir = config.get_subjects_dir_subj("sample")
+
     subjects_dir = os.path.expanduser(subjects_dir)
     grade = 3
     annot = "aparc_sub"
-    ground_metric = compute_ground_metric('CC120008',  # "fsaverage",
-                                          subjects_dir=subjects_dir,
+    ground_metric = compute_ground_metric("fsaverage",
+                                          subjects_dir=sample_subjects_dir,
                                           annot=annot,
                                           grade=grade)
-    np.save("data/ground_metric.npy")
+    np.save("data/ground_metric.npy", ground_metric)
+
+    print("It took %s seconds to execute" % (time.time() - start_time))
