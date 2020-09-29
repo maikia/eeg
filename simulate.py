@@ -9,7 +9,7 @@ from scipy.sparse import save_npz
 import mne
 from mne.utils import check_random_state
 
-from joblib import Memory, Parallel, delayed
+from joblib import cpu_count, Memory, Parallel, delayed
 from tqdm import tqdm
 
 from simulation.parcels import find_centers_of_mass
@@ -25,7 +25,7 @@ if os.environ.get('DISPLAY'):
     # to run the subjects other than sample (path specs: config.py)
 else:
     # running on the server, no display
-    N_JOBS = joblib.cpu_count()
+    N_JOBS = cpu_count()
 
 
 # Do not use more than 10 cores
