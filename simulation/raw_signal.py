@@ -1,6 +1,5 @@
 import mne
 import numpy as np
-from numpy.random import rand
 
 
 def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
@@ -52,7 +51,9 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     max_amplitude = 100  # nAm
     for idx, parcel in enumerate(parcels):
         # select the amplitude of the signal between 10 and 100 nAm
-        amplitude = (rand()*(max_amplitude-min_amplitude)+min_amplitude)*1e-9
+        amplitude = (np.random.rand() *
+                     (max_amplitude-min_amplitude) +
+                     min_amplitude) * 1e-9
         source_simulator.add_data(
             parcel,
             source_time_series * amplitude,
