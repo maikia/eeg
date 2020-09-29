@@ -1,6 +1,8 @@
 import mne
 import numpy as np
 
+np.random.seed = 42
+
 
 def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
                     signal_type='eeg'):
@@ -46,13 +48,12 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     # (source_time_series), and when (events) an event type will occur.
     source_simulator = mne.simulation.SourceSimulator(src, tstep=tstep)
 
-    np.random.seed = 42
     min_amplitude = 10  # nAm
     max_amplitude = 100  # nAm
     for idx, parcel in enumerate(parcels):
         # select the amplitude of the signal between 10 and 100 nAm
         amplitude = (np.random.rand() *
-                     (max_amplitude-min_amplitude) +
+                     (max_amplitude - min_amplitude) +
                      min_amplitude) * 1e-9
         source_simulator.add_data(
             parcel,
