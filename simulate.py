@@ -163,7 +163,8 @@ def init_signal(parcels, raw_fname, fwd_fname, subject,
     # activate selected parcels
     events, _, raw = generate_signal(raw_fname, fwd_fname, subject,
                                      parcels=to_activate,
-                                     signal_type=signal_type)
+                                     signal_type=signal_type,
+                                     random_state=rng)
 
     evoked = mne.Epochs(raw, events, tmax=0.3).average()
     data = evoked.data[:, np.argmax((evoked.data ** 2).sum(axis=0))]
