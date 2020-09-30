@@ -1,12 +1,10 @@
-import mne
 import numpy as np
-
-np.random.seed = 42
+import mne
 
 
 def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
-                    signal_type='eeg'):
-    signal_len = 0.1  # in sec
+                    signal_type='eeg', random_state=None):
+    signal_len = 0.01  # in sec
     # Generate the signal
     info = mne.io.read_info(raw_fname)
     if signal_type == 'eeg':
@@ -52,9 +50,9 @@ def generate_signal(raw_fname, fwd_fname, subject, parcels, n_events=30,
     max_amplitude = 100  # nAm
     for idx, parcel in enumerate(parcels):
         # select the amplitude of the signal between 10 and 100 nAm
-        amplitude = (np.random.rand() *
-                     (max_amplitude - min_amplitude) +
-                     min_amplitude) * 1e-9
+        amplitude = random_state.uniform(min_amplitude,
+                                         max_amplitude
+                                         ) * 1e-9
         source_simulator.add_data(
             parcel,
             source_time_series * amplitude,
