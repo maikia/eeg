@@ -12,10 +12,13 @@ subjects = 'all'
 signal_type = 'grad'
 n_parcels_max = 3
 no_parcels = 450
-data_dir_base = 'data/'
+data_dir_base = 'data/test/'
 subject_id_start = 1  # assign a number from which first subject_id will start
-divide_to_4 = True  # if true it will divide the data to
-# private/public/test/train; equal number in each
+divide_to = 2  # if 1 data will not be split. Otherwise it might be 2 or 4.
+# the data will be equally split to private and public (if set 2) or
+# to private/public/test/train (if set to 4)
+
+assert divide_to == 1 or divide_to == 2 or divide_to == 4
 
 # combine them in one datafile with each sample: data from electrodes,
 # subject_name, signal_type
@@ -87,9 +90,10 @@ def save_the_data(data_dir_all, data_dirs, subj_id_init):
         #               os.path.join(data_dir_all,
         #                            subject_name + '_labels.pickle')
         #                )
+
         shutil.copyfile(os.path.join(subject_path, 'lead_field.npz'),
                         os.path.join(data_dir_all,
-                                     subject_name_id + '_lead_field.npz')
+                                     subject_name_id + '_L.npz')
                         )
         # uncomment if you want to also save labels
         # shutil.copyfile(os.path.join(subject_path,
@@ -107,12 +111,13 @@ def save_the_data(data_dir_all, data_dirs, subj_id_init):
         print(f'Did not find any files in {data_dir}')
 
 
-if divide_to_4:
-    if len(data_dirs) % 4 != 0:
-        print('here we are using equal number of data files in each directory.'
-              f'{len(data_dirs) % 4} of the files will not be used')
-        data_dirs = data_dirs[:-len(data_dirs) % 4]
-
+if len(data_dirs) % divide_to != 0:
+    print('here we are using equal number of data files in each directory.'
+          f'{len(data_dirs) % divide_to} of the files will not be used')
+    data_dirs = data_dirs[:-len(data_dirs) % divide_to]
+if divide_to == 4:
+    # divide all the data to public/train, public/test, private/test and
+    # private/train equally
     n_files = int(len(data_dirs) / 4)
     # public/train
     public_train_dir = os.path.join(data_dir_all, 'public', 'train')
@@ -130,5 +135,18 @@ if divide_to_4:
     private_test_dir = os.path.join(data_dir_all, 'private', 'test')
     save_the_data(private_test_dir, data_dirs[n_files*3:],
                   subj_id_init=subject_id_start+n_files*3)
-else:
+elif divide_to == 2:
+    # divide all the data to public and private equally
+    n_files = int(len(data_dirs) / 2)
+    # public/train
+    public_train_dir = os.path.join(data_dir_all, 'public')
+    save_the_data(public_train_dir, data_dirs[:n_files],
+                  subj_id_init=subject_id_start)
+    # public/test
+    public_test_dir = os.path.join(data_dir_all, 'private')
+    save_the_data(public_test_dir, data_dirs[n_files:],
+                  subj_id_init=subject_id_start+n_files)
+
+
+elif divide_to == 1:
     save_the_data(data_dir_all, data_dirs, subj_id_init=subject_id_start)
