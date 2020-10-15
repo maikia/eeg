@@ -351,10 +351,10 @@ if __name__ == "__main__":
         # (only if random parcels)
         # (might be reduced by corpus callosum)
     random_state = 42
-    n_samples = 500
     hemi = 'both'
     n_sources_max = 3
     signal_type = 'grad'
+    is_for_train = True
     make_new = True  # True if rerun all, even already existing dirs
 
     data_path = config.get_data_path()
@@ -369,14 +369,19 @@ if __name__ == "__main__":
         # with corpus callosum will be removed
         parcels_fsaverage = get_ready_parcels(sample_subjects_dir, 'aparc_sub')
 
-    subject_names = ['CC120008', 'CC110033', 'CC110101', 'CC110187',
-                     'CC110411', 'CC110606', 'CC112141', 'CC120049',
-                     'CC120061', 'CC120120', 'CC120182', 'CC120264',
-                     'CC120309', 'CC120313', 'CC120319', 'CC120376',
-                     'CC120469', 'CC120550', 'CC120218', 'CC120166']
-    # 'sample'
+    if is_for_train:
+        data_dir = 'data/train'
+        n_samples = 10000
+        subject_names = ['CC120008', 'CC110033', 'CC110101', 'CC110187',
+                         'CC110411', 'CC110606', 'CC112141', 'CC120049',
+                         'CC120061', 'CC120120']  # for train
+    else:
+        data_dir = 'data/test'
+        n_samples = 500
+        subject_names = ['CC120182', 'CC120264',
+                         'CC120309', 'CC120313', 'CC120319', 'CC120376',
+                         'CC120469', 'CC120550', 'CC120218', 'CC120166']
 
-    data_dir = 'data'
     for subject in subject_names:
         subjects_dir = config.get_subjects_dir_subj(subject)
 
