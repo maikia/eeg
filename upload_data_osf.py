@@ -4,8 +4,8 @@ from osfclient.api import OSF
 # this script does the same as (from terminal)
 # osf -r -p your_password -u your_username upload local_path remote_path
 
-LOCAL_PATH = 'data/test/data_grad_all_450_3/public/'  # local path to the data
-REMOTE_PATH = 'MEG/test/temp'  # remote path where to store the data on OSF
+LOCAL_PATH = 'data/ramp_challenge/public'  # local path to the data
+REMOTE_PATH = 'MEG'  # remote path where to store the data on OSF
 PROJECT_CODE = 't4uf8'  # to find your PROJECT_CODE navigate to your OSF
 # project on the web. The link will be something of this type:
 # https://osf.io/t4uf8/ , here t4uf8 is the PROJECT_CODE
@@ -38,7 +38,7 @@ def upload_recursive_to_osf():
             print(f'{idx} uploading: {local_path}')
             idx += 1
             with open(local_path, 'rb') as fp:
-                name = os.path.join(REMOTE_PATH, dir_name, subdir_path, fname)
+                name = os.path.join(REMOTE_PATH, subdir_path, fname)
                 store.create_file(name, fp, force=True)
 
     print(f'uploaded {idx-1} files to {subdir_path}')
