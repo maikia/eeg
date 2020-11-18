@@ -327,17 +327,22 @@ def simulate_for_subject(subject, data_path, parcels_subject,
     parcel_indices_l = parcel_indices[np.where(inuse)[0]]
     assert len(parcel_indices_l) == lead_field.shape[1]
 
+    src = fwd['src']
+    src_coords = np.concatenate([src[0]['rr'][src[0]['inuse'] != 0],
+                                 src[1]['rr'][src[1]['inuse'] != 0]], axis=0)
+
     # CLEAN UP AND SAVE LF
     # Remove from parcel_indices and from the leadfield all the indices == 0
     # (not used by our brain)
     lead_field = lead_field[:, parcel_indices_l != 0]
+    src_coords = src_coords[parcel_indices_l != 0]
     parcel_indices_l = parcel_indices_l[parcel_indices_l != 0]
 
     assert len(parcel_indices_l) == lead_field.shape[1]
     assert len(np.unique(parcel_indices_l)) == len(parcels_subject)
     np.savez(os.path.join(data_dir_specific, 'lead_field.npz'),
              lead_field=lead_field, parcel_indices=parcel_indices_l,
-             signal_type=signal_type)
+             signal_type=signal_type, src_coords=src_coords)
     print('New data was saved in {}'.format(data_dir_specific))
     return data_dir_specific
 
@@ -354,7 +359,7 @@ if __name__ == "__main__":
     hemi = 'both'
     n_sources_max = 3
     signal_type = 'grad'
-    is_for_train = True
+    is_for_train = False
     make_new = True  # True if rerun all, even already existing dirs
 
     data_path = config.get_data_path()
