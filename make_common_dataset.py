@@ -46,6 +46,30 @@ random.seed(42)
 random.shuffle(data_dirs)
 
 
+def save_subject_coords(subject_id, subjects, data_type,
+                        csv_file='data/subjects.csv'):
+
+    subjects_name = []
+    for subject in subjects:
+        subject_data = subject.split('_')
+        subjects_name.append(subject_data[-3])
+    subj_ids = ['subject_' + str(subject_id) for subject_id in
+                range(subject_id, subject_id+len(subjects))]
+    data_types = [data_type for i in range(len(subjects))]
+
+    subject_info = {'subjects': subjects_name,
+                    'subjects_id': subj_ids,
+                    'data_type': data_types}
+    subject_info = pd.DataFrame.from_dict(subject_info)
+    subject_info = subject_info.set_index('subjects')
+
+    if os.path.exists(csv_file):
+        with open(csv_file, 'a') as f:
+            subject_info.to_csv(f, index='subjects', header=False)
+    else:
+        subject_info.to_csv(csv_file, index='subjects')
+
+
 def save_the_data(data_dir_all, subdir, data_dirs, subj_id_init,
                   remove_previous=False):
     # data_dir_all : where to save the data
@@ -138,21 +162,25 @@ if divide_to == 4:
     n_files = int(len(data_dirs) / 4)
     # public/train
     public_train_dir = os.path.join(data_dir_save, 'public')
+    save_subject_coords(subject_id_start, data_dirs[n_files:], 'public-train')
     save_the_data(public_train_dir, subdir='train',
                   data_dirs=data_dirs[:n_files],
                   subj_id_init=subject_id_start)
     # public/test
     public_test_dir = os.path.join(data_dir_save, 'public')
+    save_subject_coords(subject_id_start, data_dirs[n_files:], 'public-test')
     save_the_data(public_test_dir, subdir='test',
                   data_dirs=data_dirs[n_files:n_files*2],
                   subj_id_init=subject_id_start+n_files)
     # private/train
     private_train_dir = os.path.join(data_dir_save, 'private')
+    save_subject_coords(subject_id_start, data_dirs[n_files:], 'private-train')
     save_the_data(private_train_dir, subdir='train',
                   data_dirs=data_dirs[n_files*2:n_files*3],
                   subj_id_init=subject_id_start+n_files*2)
     # private/test
     private_test_dir = os.path.join(data_dir_save, 'private')
+    save_subject_coords(subject_id_start, data_dirs[n_files:], 'private-test')
     save_the_data(private_test_dir, subdir='test',
                   data_dirs=data_dirs[n_files*3:],
                   subj_id_init=subject_id_start+n_files*3)
@@ -161,11 +189,13 @@ elif divide_to == 2:
     n_files = int(len(data_dirs) / 2)
     # public/train
     public_train_dir = os.path.join(data_dir_save, 'public')
+    save_subject_coords(subject_id_start, data_dirs[:n_files], 'public')
     save_the_data(public_train_dir, subdir,
                   data_dirs=data_dirs[:n_files],
                   subj_id_init=subject_id_start)
     # public/test
     public_test_dir = os.path.join(data_dir_save, 'private')
+    save_subject_coords(subject_id_start, data_dirs[n_files:], 'private')
     save_the_data(public_test_dir, subdir,
                   data_dirs=data_dirs[n_files:],
                   subj_id_init=subject_id_start)
