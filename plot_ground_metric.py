@@ -6,7 +6,7 @@ import config
 
 
 if __name__ == "__main__":
-    M = np.load("ground_metric.npy")
+    M = np.load("data/ground_metric.npy")
     subjects_dir = config.get_subjects_dir_subj("sample")
     subject = "fsaverage"
     annot = "aparc_sub"
@@ -27,3 +27,5 @@ if __name__ == "__main__":
     for ii, color in zip(np.argsort(dists), colors):
         hemi = parcels[ii].name[-2:]
         brain.add_label(parcels[ii], hemi=hemi, borders=True, color=color)
+    brain.show_view("frontal")
+    brain.save_image("data/ground_metric.png")
