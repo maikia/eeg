@@ -1,38 +1,29 @@
-import numpy as np
-
 import mne
-
-from mayavi import mlab
-from surfer import Brain
-
+import numpy as np
+from mne import SourceEstimate as STC
+from matplotlib import cm
 import config
 
 
-grade = 3
-annot = "aparc_sub"
-subject = "fsaverage"
-subjects_dir = config.get_subjects_dir_subj("sample")
-ground_metric = np.load("data/ground_metric.npy")
+if __name__ == "__main__":
+    M = np.load("ground_metric.npy")
+    subjects_dir = config.get_subjects_dir_subj("sample")
+    subject = "fsaverage"
+    annot = "aparc_sub"
 
-hemi = "lh"
-label_index = 0
-labels = mne.read_labels_from_annot(subject, annot, hemi,
-                                    subjects_dir=subjects_dir)
-labels = [label.morph(subject_to=subject, subject_from=subject,
-                      grade=grade, subjects_dir=subjects_dir)
-          for label in labels]
-distances = np.zeros(642)
-label_vertices = labels[label_index].vertices
-for ii, label_i in enumerate(labels):
-    v_i = label_i.vertices
-    distances[v_i] = ground_metric[0][ii]
+    parcels = mne.read_labels_from_annot(subject, annot, hemi='both',
+                                         subjects_dir=subjects_dir)
 
-f = mlab.figure(size=(700, 600))
-brain = Brain(subject, hemi, "inflated", subjects_dir=subjects_dir, figure=f,
-              background="white", foreground='black')
-vertices = np.arange(642)
-brain.add_annotation('aparc_sub', alpha=0.2)
-brain.add_data(distances, vertices=vertices,
-               hemi="lh", transparent=True, smoothing_steps=5,
-               colormap="hot", alpha=0.95, mid=40)
-brain.save_image("data/ground_metric.png")
+    # pick some parcel
+    idx = 18
+    xx = parcels[idx]
+    dists = M[idx]
+    colors = cm.Reds(np.linspace(0., 1., len(parcels)))
+
+    # create some empty stc
+    stc0 = STC(data=np.zeros((1, 1)), vertices=[np.array([]), np.array([0])],
+               tmin=0, tstep=1)
+    brain = stc0.plot(subject, hemi="both", subjects_dir=subjects_dir)
+    for ii, color in zip(np.argsort(dists), colors):
+        hemi = parcels[ii].name[-2:]
+        brain.add_label(parcels[ii], hemi=hemi, borders=True, color=color)
