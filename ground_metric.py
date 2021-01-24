@@ -61,6 +61,9 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
         ground_metrics.append(D)
 
     largest_distance = max(ground_metrics[0].max(), ground_metrics[1].max())
+
+    mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
+                                              verbose=True)
     labels = mne.read_labels_from_annot(
         'fsaverage', annot, hemi='both', subjects_dir=subjects_dir)
 
