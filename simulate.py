@@ -131,6 +131,11 @@ def get_ready_parcels(subjects_dir, parcels='aparc_sub'):
             to_remove.append(idx)
     [parcels.pop(idc) for idc in to_remove[::-1]]
 
+    # Morphing expects sorted vertices
+    # remove corpus callosum vertices requires resizing the values
+    for label in parcels:
+        label.vertices = np.sort(label.vertices)
+        label.values = np.ones(len(label.vertices))
     return parcels
 
 
