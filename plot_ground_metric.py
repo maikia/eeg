@@ -1,9 +1,9 @@
-import mne
 import numpy as np
 from mne import SourceEstimate as STC
 from matplotlib import cm
 import config
 
+from simulate import get_ready_parcels
 
 if __name__ == "__main__":
     M = np.load("data/ground_metric.npy")
@@ -11,14 +11,16 @@ if __name__ == "__main__":
     subject = "fsaverage"
     annot = "aparc_sub"
 
-    parcels = mne.read_labels_from_annot(subject, annot, hemi='both',
-                                         subjects_dir=subjects_dir)
+    parcels = get_ready_parcels(subjects_dir, annot)
 
     # pick some parcel
-    idx = 18
+    idx = 17
     xx = parcels[idx]
     dists = M[idx]
-    colors = cm.Reds(np.linspace(0., 1., len(parcels)))
+    # set all max_dists to the same dark red color
+    n_ones = (dists == 1.).sum()
+    colors = cm.Reds(np.linspace(0., 1., len(parcels) - n_ones))
+    colors = np.concatenate([colors, cm.Reds(np.ones(n_ones))])
 
     # create some empty stc
     stc0 = STC(data=np.zeros((1, 1)), vertices=[np.array([]), np.array([0])],
