@@ -8,6 +8,8 @@ from ot import emd2
 
 import config as config
 
+from simulate import get_ready_parcels
+
 
 def mesh_all_distances(points, tris):
     """Compute all pairwise distances on the mesh based on edges lengths
@@ -62,11 +64,7 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
 
     largest_distance = max(ground_metrics[0].max(), ground_metrics[1].max())
 
-    mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
-                                              verbose=True)
-    labels = mne.read_labels_from_annot(
-        'fsaverage', annot, hemi='both', subjects_dir=subjects_dir)
-
+    labels = get_ready_parcels(subjects_dir, annot)
     labels = [label.morph(subject_to=subject, subject_from=subject,
                           grade=grade, subjects_dir=subjects_dir)
               for label in labels]
@@ -76,7 +74,7 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
     # uniform measures with the parcels as supports
     ground_metric = np.zeros((n_parcels, n_parcels))
     for ii, label_i in enumerate(labels):
-        hemi_i = label_i.name[-2:]
+        hemi_i = label_i.hemi
         hemi_indx = int(hemi_i == "rh")
         a = np.zeros(n_vertices)
         a[label_i.vertices] = 1
@@ -84,7 +82,7 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
         for jj in range(ii, n_parcels):
             # if in the same hemi, compute emd
             # else use the largest distance in ground_metrics
-            if hemi_i in labels[jj].name:
+            if hemi_i in labels[jj].hemi:
                 b = np.zeros(n_vertices)
                 b[labels[jj].vertices] = 1
                 b /= b.sum()
@@ -93,7 +91,7 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
                 ground_metric[ii, jj] = largest_distance
     ground_metric *= 1000  # change units to mm
     # fill the lower part by symmetry
-    ground_metric = 0.5 * (ground_metric + ground_metric.T)
+    ground_metric = ground_metric + ground_metric.T
 
     return ground_metric
 
