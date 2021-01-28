@@ -8,6 +8,8 @@ from ot import emd2
 
 import config as config
 
+from simulate import get_ready_parcels
+
 
 def mesh_all_distances(points, tris):
     """Compute all pairwise distances on the mesh based on edges lengths
@@ -49,7 +51,8 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
     src = mne.setup_source_space(subject, spacing=spacing,
                                  subjects_dir=subjects_dir)
     ground_metrics = []
-    n_labels = []
+    # Compute 2 large ground metrics between all vertices on ico3
+    # one for each hemisphere
     for hemi, s in zip(["lh", "rh"], src):
         print("Doing hemi %s ..." % hemi)
         tris = s["use_tris"]
@@ -57,36 +60,38 @@ def compute_ground_metric(subject, subjects_dir, annot, grade):
         points = s["rr"][vertno]
         D = mesh_all_distances(points, tris)
         n_vertices = len(vertno)
+        ground_metrics.append(D)
 
-        mne.datasets.fetch_aparc_sub_parcellation(subjects_dir=subjects_dir,
-                                                  verbose=True)
-        labels = mne.read_labels_from_annot(subject, annot, hemi,
-                                            subjects_dir=subjects_dir)
-        n_labels.append(len(labels))
+    largest_distance = max(ground_metrics[0].max(), ground_metrics[1].max())
 
-        print("Morphing labels ...")
-        labels = [label.morph(subject_to=subject, subject_from=subject,
-                              grade=grade, subjects_dir=subjects_dir)
-                  for label in labels]
-        n_parcels = len(labels)
-        ground_metric_hemi = np.zeros((n_parcels, n_parcels))
-        for ii, label_i in enumerate(labels):
-            a = np.zeros(n_vertices)
-            a[label_i.vertices] = 1
-            a /= a.sum()
-            for jj in range(ii + 1, n_parcels):
+    labels = get_ready_parcels(subjects_dir, annot)
+    labels = [label.morph(subject_to=subject, subject_from=subject,
+                          grade=grade, subjects_dir=subjects_dir)
+              for label in labels]
+    n_parcels = len(labels)
+
+    # fill the final ground_metric between parcels by comparing
+    # uniform measures with the parcels as supports
+    ground_metric = np.zeros((n_parcels, n_parcels))
+    for ii, label_i in enumerate(labels):
+        hemi_i = label_i.hemi
+        hemi_indx = int(hemi_i == "rh")
+        a = np.zeros(n_vertices)
+        a[label_i.vertices] = 1
+        a /= a.sum()
+        for jj in range(ii, n_parcels):
+            # if in the same hemi, compute emd
+            # else use the largest distance in ground_metrics
+            if hemi_i in labels[jj].hemi:
                 b = np.zeros(n_vertices)
                 b[labels[jj].vertices] = 1
                 b /= b.sum()
-                ground_metric_hemi[ii, jj] = emd2(a, b, D)
-        ground_metric_hemi = 0.5 * (ground_metric_hemi + ground_metric_hemi.T)
-        ground_metrics.append(ground_metric_hemi)
-    across_hemi_mat = np.ones((n_labels[0], n_labels[1]))
-    across_hemi_mat *= ground_metric_hemi.max() * 2
-    ground_metric = np.block([[ground_metrics[0], across_hemi_mat],
-                              [across_hemi_mat.T, ground_metrics[1]]])
-
+                ground_metric[ii, jj] = emd2(a, b, ground_metrics[hemi_indx])
+            else:
+                ground_metric[ii, jj] = largest_distance
     ground_metric *= 1000  # change units to mm
+    # fill the lower part by symmetry
+    ground_metric = ground_metric + ground_metric.T
 
     return ground_metric
 

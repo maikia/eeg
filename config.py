@@ -13,7 +13,7 @@ def get_subjects_dir(dataset_name="camcan"):
         subjects_dir = "/storage/store/work/agramfort/mne-biomag-group-demo/"
         subjects_dir += "subjects/"
     elif dataset_name == "sample":
-        data_path = mne.datasets.sample.data_path()
+        data_path = "/storage/store/data/mne_data/MNE-sample-data"
         subjects_dir = os.path.join(data_path, 'subjects')
     else:
         raise ValueError("Unknown dataset %s." % dataset_name)
